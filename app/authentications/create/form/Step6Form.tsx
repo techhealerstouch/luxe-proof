@@ -88,25 +88,23 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
         {/* Decorative Finishing Present */}
         <FormItem>
           <FormLabel>Decorative Finishing Present?</FormLabel>
-          <div className="space-y-2">
-            {["Côtes de Genève", "Perlage"].map((label) => (
-              <FormField
-                key={label}
-                name="decorative_finishing"
-                render={() => (
-                  <FormItem className="flex items-center space-x-2">
-                    <FormControl>
-                      <Checkbox
-                        checked={decorativeFinishing?.includes(label)}
-                        onCheckedChange={() => handleCheckboxChange(label)}
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal">{label}</FormLabel>
-                  </FormItem>
-                )}
-              />
-            ))}
-          </div>
+          {["Côtes de Genève", "Perlage"].map((label) => (
+            <FormField
+              key={label}
+              name="decorative_finishing"
+              render={() => (
+                <FormItem className="flex items-center space-x-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={decorativeFinishing?.includes(label)}
+                      onCheckedChange={() => handleCheckboxChange(label)}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">{label}</FormLabel>
+                </FormItem>
+              )}
+            />
+          ))}
         </FormItem>
 
         {/* Other Decorative Finishing */}

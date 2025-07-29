@@ -103,13 +103,13 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
                   value={field.value}
                   className="flex space-x-4"
                 >
-                  <FormItem>
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="yes" />
                     </FormControl>
                     <FormLabel>Yes</FormLabel>
                   </FormItem>
-                  <FormItem>
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="no" />
                     </FormControl>
@@ -133,13 +133,13 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
                   value={field.value}
                   className="flex space-x-4"
                 >
-                  <FormItem>
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="yes" />
                     </FormControl>
                     <FormLabel>Yes</FormLabel>
                   </FormItem>
-                  <FormItem>
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="no" />
                     </FormControl>
@@ -163,19 +163,19 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
                   value={field.value}
                   className="flex space-x-4"
                 >
-                  <FormItem>
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="yes" />
                     </FormControl>
                     <FormLabel>Yes</FormLabel>
                   </FormItem>
-                  <FormItem>
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="no" />
                     </FormControl>
                     <FormLabel>No</FormLabel>
                   </FormItem>
-                  <FormItem>
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="na" />
                     </FormControl>

@@ -8,22 +8,7 @@ import { useAuth } from "@/components/auth-provider";
 import DashboardLayout from "@/components/dashboard-layout";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+
 import {
   Card,
   CardContent,
@@ -31,17 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FileInput } from "@/components/ui/file-input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Step1Form } from "./form/Step1Form";
 import { Step2Form } from "./form/Step2Form";
 import { Step3Form } from "./form/Step3Form";
@@ -51,92 +26,31 @@ import { Step6Form } from "./form/Step6Form";
 import { Step7Form } from "./form/Step7Form";
 import { Step8Form } from "./form/Step8Form";
 
-import { step1Schema } from "./form/schemas/step1Schema";
+import {
+  step1Schema,
+  step2Schema,
+  step3Schema,
+  step4Schema,
+  step5Schema,
+  step6Schema,
+  step7Schema,
+  step8Schema,
+} from "./form/schemas/stepsSchema";
 
-const step2Schema = z.object({
-  serial_number: z.string().min(1, "Serial number is required"),
-  model_number: z.string().min(1, "Model number is required"),
-  serial_location: z.boolean().refine((val) => val === true, {
-    message: "Please confirm where the serial was found",
-  }),
-  match_with_documents: z.boolean().refine((val) => val === true, {
-    message: "Serial must match with documents",
-  }),
-  engraving_quality: z.boolean().refine((val) => val === true, {
-    message: "Please confirm engraving quality",
-  }),
-  serial_notes: z
-    .string()
-    .min(5, "Please provide notes (minimum 5 characters)"),
-});
-
-const fullFormSchema = step1Schema.merge(step1Schema).merge(step2Schema);
-
+const fullFormSchema = step1Schema
+  .merge(step2Schema)
+  .merge(step3Schema)
+  .merge(step4Schema)
+  .merge(step5Schema)
+  .merge(step6Schema)
+  .merge(step7Schema)
+  .merge(step8Schema);
 type FormData = z.infer<typeof fullFormSchema>;
 
 export default function CreateAuthenticationPage() {
   const [step, setStep] = useState(0);
   const totalSteps = 8;
   const emptySchema = z.object({}); // No validation
-
-  // Get the current step's schema
-  const getCurrentSchema = () => {
-    switch (step) {
-      case 0:
-        return step1Schema;
-      case 1:
-        return emptySchema;
-      case 2:
-        return emptySchema;
-      case 3:
-        return emptySchema;
-      case 4:
-        return emptySchema;
-      default:
-        return emptySchema;
-    }
-  };
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(getCurrentSchema()),
-    mode: "onChange",
-  });
-
-  const {
-    handleSubmit,
-    control,
-    reset,
-    trigger,
-    formState: { errors },
-  } = form;
-
-  const onSubmit = async (formData: FormData) => {
-    // Validate current step before proceeding
-    const isStepValid = await trigger();
-
-    if (!isStepValid) {
-      toast.error("Please fix the validation errors before proceeding");
-      return;
-    }
-
-    if (step < totalSteps - 1) {
-      setStep(step + 1);
-      // Update resolver for next step
-    } else {
-      // Final submission - validate entire form
-      const finalValidation = fullFormSchema.safeParse(formData);
-
-      if (!finalValidation.success) {
-        toast.error("Please complete all required fields");
-        return;
-      }
-
-      console.log("Final form data:", finalValidation.data);
-      setStep(0);
-      reset();
-      toast.success("Form successfully submitted");
-    }
-  };
   const stepTitles = [
     "Provenance & Documentation Audit",
     "Serial & Model Number Cross-Reference",
@@ -147,6 +61,69 @@ export default function CreateAuthenticationPage() {
     "Performance & Function Test",
     "Final Condition & Grading",
   ];
+
+  // Get the current step's schema
+  const getCurrentSchema = () => {
+    switch (step) {
+      case 0:
+        return step1Schema;
+      case 1:
+        return step2Schema;
+      case 2:
+        return step3Schema;
+      case 3:
+        return step4Schema;
+      case 4:
+        return step5Schema;
+      case 5:
+        return step6Schema;
+      case 6:
+        return step7Schema;
+      case 7:
+        return step8Schema;
+      default:
+        return emptySchema;
+    }
+  };
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(getCurrentSchema()),
+    mode: "onChange",
+    defaultValues: {}, // optional: you can prefill initial data here
+  });
+
+  const {
+    handleSubmit,
+    control,
+    reset,
+    trigger,
+    formState: { errors },
+  } = form;
+  const onSubmit = async () => {
+    const isStepValid = await trigger(); // triggers validation for current step only
+
+    if (!isStepValid) {
+      toast.error("Please fix the validation errors before proceeding");
+      return;
+    }
+
+    if (step < totalSteps - 1) {
+      setStep(step + 1);
+    } else {
+      const allData = form.getValues(); // ✅ get all form values
+      const finalValidation = fullFormSchema.safeParse(allData); // ✅ validate the whole schema
+
+      if (!finalValidation.success) {
+        toast.error("Please complete all required fields");
+        return;
+      }
+
+      console.log("Final form data:", finalValidation.data);
+      toast.success("Form successfully submitted");
+      setStep(0);
+      reset();
+    }
+  };
 
   const handleBack = () => {
     if (step > 0) {
