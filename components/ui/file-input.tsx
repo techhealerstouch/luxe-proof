@@ -7,15 +7,15 @@ import { Button } from "./button";
 
 interface FileInputProps {
   className?: string;
-  value?: File | null;
-  onChange?: (file: File | null) => void;
+  value?: File[];
+  onChange?: (files: File[]) => void;
   disabled?: boolean;
   accept?: string;
 }
 
 const FileInput = ({
   className,
-  value,
+  value = [],
   onChange,
   disabled,
   accept,
@@ -23,35 +23,39 @@ const FileInput = ({
   const [isDragging, setIsDragging] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleFileSelection = (file: File | null) => {
-    if (!disabled) onChange?.(file);
+  const handleFiles = (files: FileList | File[]) => {
+    const newFiles = Array.from(files);
+    onChange?.([...(value || []), ...newFiles]);
   };
 
-  const handleDragEvents = (
-    e: React.DragEvent<HTMLDivElement>,
-    isOver: boolean
-  ) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (!disabled) setIsDragging(isOver);
+    if (!disabled) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!disabled) setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setIsDragging(false);
-
     if (!disabled) {
-      const file = e.dataTransfer.files?.[0] ?? null;
-      handleFileSelection(file);
+      setIsDragging(false);
+      handleFiles(e.dataTransfer.files);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFileSelection(e.target.files?.[0] ?? null);
+    if (e.target.files && !disabled) {
+      handleFiles(e.target.files);
+    }
   };
 
-  const handleRemove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    handleFileSelection(null);
+  const handleRemove = (index: number) => {
+    const updatedFiles = [...value];
+    updatedFiles.splice(index, 1);
+    onChange?.(updatedFiles);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -59,8 +63,8 @@ const FileInput = ({
     <div className={cn("space-y-2", className)}>
       <div
         onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => handleDragEvents(e, true)}
-        onDragLeave={(e) => handleDragEvents(e, false)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
           "relative cursor-pointer rounded-md border border-dashed border-muted-foreground/25 px-6 py-8 text-center transition-colors hover:bg-muted/50",
@@ -75,6 +79,7 @@ const FileInput = ({
           ref={inputRef}
           type="file"
           accept={accept}
+          multiple
           disabled={disabled}
           onChange={handleChange}
           className="hidden"
@@ -87,28 +92,36 @@ const FileInput = ({
           </p>
         </div>
       </div>
-      {value && (
-        <div className="flex items-center gap-2 rounded-md bg-muted/50 p-2">
-          <div className="rounded-md bg-background p-2">
-            <FileIcon className="size-4 text-muted-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium">{value.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {(value.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            disabled={disabled}
-            onClick={handleRemove}
-            className="flex-none size-8"
-          >
-            <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
-            <span className="sr-only">Remove file</span>
-          </Button>
+
+      {value.length > 0 && (
+        <div className="space-y-2">
+          {value.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-2 rounded-md bg-muted/50 p-2"
+            >
+              <div className="rounded-md bg-background p-2">
+                <FileIcon className="size-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={disabled}
+                onClick={() => handleRemove(index)}
+                className="flex-none size-8"
+              >
+                <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+                <span className="sr-only">Remove file</span>
+              </Button>
+            </div>
+          ))}
         </div>
       )}
     </div>
