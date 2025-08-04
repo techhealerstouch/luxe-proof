@@ -33,6 +33,7 @@ export default function LoginPage() {
     setError("");
 
     const success = await login(email, password);
+    console.log(success);
     if (success) {
       router.push("/dashboard");
     } else {
@@ -64,7 +65,6 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -75,19 +75,18 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="admin123"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-            <div className="text-sm text-gray-600">
+            {/* <div className="text-sm text-gray-600">
               <p>
                 <strong>Demo Credentials:</strong>
               </p>
               <p>Admin: admin@example.com / admin123</p>
               <p>User: user@example.com / user123</p>
-            </div>
+            </div> */}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={isLoading}>

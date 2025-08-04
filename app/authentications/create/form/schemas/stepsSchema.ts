@@ -1,6 +1,50 @@
 // schemas/step0Schema.ts
 import { z } from "zod";
 
+export const UserInformationSchema = z
+  .object({
+    watch_brand: z.enum(["Seiko", "Casio", "Citizen", "Rolex", "Omega"], {
+      required_error: "Please select a watch brand",
+    }),
+    user_type: z.enum(["personal", "company"], {
+      required_error: "Please select a user type",
+    }),
+    company_name: z.string().optional(),
+    abn: z.string().optional(),
+    company_address: z.string().optional(),
+    full_name: z.string().min(1, { message: "Full Name is required" }),
+    email: z.string().email({ message: "Invalid email address" }),
+    phone: z.string().optional(),
+    contact_method: z.enum(["email", "phone", "whatsapp"], {
+      required_error: "Please select a contact method",
+    }),
+  })
+  .superRefine((data, ctx) => {
+    // Conditional validation if user_type is company
+    if (data.user_type === "company") {
+      if (!data.company_name || data.company_name.trim() === "") {
+        ctx.addIssue({
+          path: ["company_name"],
+          code: z.ZodIssueCode.custom,
+          message: "Company name is required",
+        });
+      }
+      if (!data.abn || data.abn.trim() === "") {
+        ctx.addIssue({
+          path: ["abn"],
+          code: z.ZodIssueCode.custom,
+          message: "ABN is required",
+        });
+      }
+      if (!data.company_address || data.company_address.trim() === "") {
+        ctx.addIssue({
+          path: ["company_address"],
+          code: z.ZodIssueCode.custom,
+          message: "Company address is required",
+        });
+      }
+    }
+  });
 export const step1Schema = z.object({
   warranty_card: z
     .array(
@@ -42,11 +86,11 @@ export const step2Schema = z.object({
 
   model_number: z.string().min(1, { message: "Model number is required" }),
 
-  serial_location: z
+  serial_found_location: z
     .string()
     .min(1, { message: "Serial location is required" }),
 
-  match_with_documents: z.enum(["yes", "no"], {
+  matches_documents: z.enum(["yes", "no"], {
     required_error: "Please select if it matches with documents",
   }),
 
@@ -120,7 +164,7 @@ export const step5Schema = z.object({
     required_error: "Clasp action is required",
   }),
 
-  micro_adjustment_function: z.enum(["yes", "no"], {
+  micro_adjustment_functioning: z.enum(["yes", "no"], {
     required_error: "Micro-adjustment system functionality is required",
   }),
 
@@ -132,17 +176,15 @@ export const step5Schema = z.object({
 });
 
 export const step6Schema = z.object({
-  movement_caliber_number: z
-    .string()
-    .min(1, "Movement Caliber Number is required"),
+  movement_caliber: z.string().min(1, "Movement Caliber Number is required"),
 
-  engraving_quality: z.enum(["sharp", "engraved", "missing"], {
+  movement_engraving_quality: z.enum(["sharp", "engraved", "missing"], {
     required_error: "Engraving quality is required",
   }),
 
   decorative_finishing: z.array(z.string()).optional(), // optional checkbox field
 
-  decorative_finishing_other: z.string().optional(),
+  movement_other: z.string().optional(),
 
   purple_reversing_wheels: z.enum(["yes", "no"], {
     required_error: "Select an option for purple reversing wheels",
@@ -156,28 +198,30 @@ export const step6Schema = z.object({
 });
 
 export const step7Schema = z.object({
-  rate: z
+  rate_seconds_per_day: z
     .string()
     .min(1, "Rate is required")
     .refine((val) => !isNaN(Number(val)), {
       message: "Rate must be a number",
     }),
 
-  amplitude: z
+  amplitude_degrees: z
     .string()
     .min(1, "Amplitude is required")
     .refine((val) => !isNaN(Number(val)), {
       message: "Amplitude must be a number",
     }),
 
-  beat_error: z
+  beat_error_ms: z
     .string()
     .min(1, "Beat Error is required")
     .refine((val) => !isNaN(Number(val)), {
       message: "Beat Error must be a number",
     }),
 
-  power_reserve: z.string().min(1, "Power reserve result is required"),
+  power_reserve_test_result: z
+    .string()
+    .min(1, "Power reserve result is required"),
 
   time_setting_works: z.enum(["yes", "no"], {
     required_error: "Time setting field is required",
@@ -224,7 +268,7 @@ export const step8Schema = z.object({
     required_error: "Please indicate if the watch was polished.",
   }),
 
-  estimated_year_of_production: z
+  estimated_production_year: z
     .string()
     .optional()
     .refine((val) => !val || /^\d{4}$/.test(val), {

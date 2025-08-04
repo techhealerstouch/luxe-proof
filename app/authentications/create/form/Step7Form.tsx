@@ -36,7 +36,7 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Timegrapher Results */}
         <FormField
-          name="rate"
+          name="rate_seconds_per_day"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Rate (seconds/day)</FormLabel>
@@ -49,7 +49,7 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
         />
 
         <FormField
-          name="amplitude"
+          name="amplitude_degrees"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Amplitude (degrees)</FormLabel>
@@ -62,7 +62,7 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
         />
 
         <FormField
-          name="beat_error"
+          name="beat_error_ms"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Beat Error (ms)</FormLabel>
@@ -75,7 +75,7 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
         />
 
         <FormField
-          name="power_reserve"
+          name="power_reserve_test_result"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Power Reserve Test Result</FormLabel>

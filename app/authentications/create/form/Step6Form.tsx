@@ -50,7 +50,7 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Movement Caliber Number */}
         <FormField
-          name="movement_caliber_number"
+          name="movement_caliber"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Movement Caliber Number</FormLabel>
@@ -64,7 +64,7 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
 
         {/* Engraving Quality */}
         <FormField
-          name="engraving_quality"
+          name="movement_engraving_quality"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Engraving Quality</FormLabel>
@@ -109,7 +109,7 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
 
         {/* Other Decorative Finishing */}
         <FormField
-          name="decorative_finishing_other"
+          name="movement_other"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Other (Decorative Finishing)</FormLabel>

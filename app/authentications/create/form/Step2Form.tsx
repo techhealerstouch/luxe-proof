@@ -62,7 +62,7 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
         />
 
         <FormField
-          name="serial_location"
+          name="serial_found_location"
           render={({ field }) => (
             <FormItem className="flex flex-col space-y-2 rounded-md">
               <FormLabel>Where was the serial found?</FormLabel>
@@ -85,7 +85,7 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
         />
 
         <FormField
-          name="match_with_documents"
+          name="matches_documents"
           render={({ field }) => (
             <FormItem className="flex flex-col space-y-2 rounded-md border p-4">
               <FormLabel>Match with documents? *</FormLabel>

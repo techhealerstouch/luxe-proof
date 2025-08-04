@@ -127,22 +127,40 @@ export function Step8Form({ form, onSubmit, onBack, step }: Step8FormProps) {
 
         {/* Estimated Year of Production */}
         <FormField
-          name="estimated_year_of_production"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Estimated Year of Production</FormLabel>
-              <FormControl>
-                <Input
-                  type="text"
-                  placeholder="Enter or auto-calculate"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          name="estimated_production_year"
+          render={({ field }) => {
+            const currentYear = new Date().getFullYear();
+            const startYear = 1950;
+            const years: string[] = Array.from(
+              { length: currentYear - startYear + 1 },
+              (_, i) => String(startYear + i)
+            );
 
+            return (
+              <FormItem>
+                <FormLabel>Estimated Year of Production</FormLabel>
+                <FormControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
         {/* Final Summary */}
         <FormField
           name="final_summary"

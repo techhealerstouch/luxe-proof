@@ -14,6 +14,8 @@ interface User {
   role: string;
   businessName?: string;
   businessSlug?: string;
+  password?: string;
+  password_confirmation?: string;
 }
 
 interface AuthContextType {
@@ -31,24 +33,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Dummy users data
-const DUMMY_USERS = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "admin@example.com",
-    password: "admin123",
-    role: "admin",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "user@example.com",
-    password: "user123",
-    role: "user",
-  },
-];
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for stored user session
-    const storedUser = localStorage.getItem("user");
+    const storedUser = sessionStorage.getItem("user");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
@@ -64,22 +48,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const foundUser = DUMMY_USERS.find(
-      (u) => u.email === email && u.password === password
-    );
-    if (foundUser) {
-      const userData = {
-        id: foundUser.id,
-        name: foundUser.name,
-        account_id: "345",
-        email: foundUser.email,
-        role: foundUser.role,
-      };
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
-      return true;
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/luxeproof/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok) {
+        sessionStorage.setItem("access_token", data.access_token);
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("loggedIn", "true"); // ✅ mark logged in
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      return false;
     }
-    return false;
   };
 
   const register = async (
@@ -91,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const slug = businessName.toLowerCase().replace(/\s+/g, "-");
       const response = await axios.post(
-        "http://127.0.0.1:8000/api/register",
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/register`,
         {
           slug,
           business_name: businessName,
@@ -138,15 +129,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
     router.push("/login");
   };
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+  const updateUser = async (userData: {
+    name?: string;
+    email?: string;
+    password?: string;
+  }) => {
+    const userString = sessionStorage.getItem("user");
+    const token = sessionStorage.getItem("access_token");
+
+    if (!userString || !token) {
+      return;
+    }
+
+    const user = JSON.parse(userString);
+
+    try {
+      const response = await axios.put(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/${user.id}`,
+        userData,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update local state and storage
+      setUser(response.data.data);
+      localStorage.setItem("user", JSON.stringify(response.data.data));
+    } catch (error: any) {
+      if (error.response) {
+        console.error("Validation failed:", error.response.data.errors);
+      } else {
+        console.error("Update failed:", error.message);
+      }
     }
   };
 

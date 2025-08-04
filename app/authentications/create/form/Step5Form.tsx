@@ -104,7 +104,7 @@ export function Step5Form({ form, onSubmit, onBack, step }: Step5FormProps) {
 
         {/* Micro-adjustment System Functioning */}
         <FormField
-          name="micro_adjustment_function"
+          name="micro_adjustment_functioning"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Micro-adjustment System Functioning?</FormLabel>
