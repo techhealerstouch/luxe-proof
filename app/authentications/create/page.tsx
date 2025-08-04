@@ -1,333 +1,259 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuth } from "@/components/auth-provider";
+import DashboardLayout from "@/components/dashboard-layout";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-import { useState, useEffect } from "react"
-import { useAuth } from "@/components/auth-provider"
-import { useRouter } from "next/navigation"
-import DashboardLayout from "@/components/dashboard-layout"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SearchableSelect } from "@/components/searchable-select"
-import { DUMMY_WATCHES, type Watch, type WatchAuthentication } from "@/components/watch-data"
-import Image from "next/image"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+import { Step1Form } from "./form/Step1Form";
+import { Step2Form } from "./form/Step2Form";
+import { Step3Form } from "./form/Step3Form";
+import { Step4Form } from "./form/Step4Form";
+import { Step5Form } from "./form/Step5Form";
+import { Step6Form } from "./form/Step6Form";
+import { Step7Form } from "./form/Step7Form";
+import { Step8Form } from "./form/Step8Form";
+import { UserInformationForm } from "./form/UserInformationForm";
+import authenticatedWatchService from "../authenticatedWatchService";
+
+import {
+  step1Schema,
+  step2Schema,
+  step3Schema,
+  step4Schema,
+  step5Schema,
+  step6Schema,
+  step7Schema,
+  step8Schema,
+  UserInformationSchema,
+} from "./form/schemas/stepsSchema";
+
+const fullFormSchema = step1Schema
+  .merge(step2Schema)
+  .merge(step3Schema)
+  .merge(step4Schema)
+  .merge(step5Schema)
+  .merge(step6Schema)
+  .merge(step7Schema)
+  .merge(step8Schema);
+type FormData = z.infer<typeof fullFormSchema>;
 
 export default function CreateAuthenticationPage() {
-  const { user } = useAuth()
-  const router = useRouter()
-  const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
-  const [formData, setFormData] = useState({
-    productVerification: "",
-    waterResistantTest: "",
-    timegraphTest: "",
-    description: "",
-    verificationImages: ["", "", "", ""],
-    accessoryImages: [""],
-  })
+  const [step, setStep] = useState(0);
+  const totalSteps = 9;
+  const emptySchema = z.object({}); // No validation
+  const stepTitles = [
+    "User Information",
+    "Provenance & Documentation Audit",
+    "Serial & Model Number Cross-Reference",
+    "Case, Bezel, and Crystal Analysis", // Step 3
+    "Case, Bezel, and Crystal Analysis", // Step 4
+    "Bracelet/Strap and Clasp Inspection",
+    "Movement Examination",
+    "Performance & Function Test",
+    "Final Condition & Grading",
+  ];
 
-  useEffect(() => {
-    if (!user) {
-      router.push("/login")
+  // Get the current step's schema
+  const getCurrentSchema = () => {
+    switch (step) {
+      case 0:
+        return UserInformationSchema;
+      case 1:
+        return step1Schema;
+      case 2:
+        return step2Schema;
+      case 3:
+        return step3Schema;
+      case 4:
+        return step4Schema;
+      case 5:
+        return step5Schema;
+      case 6:
+        return step6Schema;
+      case 7:
+        return step7Schema;
+      case 8:
+        return step8Schema;
+      default:
+        return emptySchema;
     }
-  }, [user, router])
+  };
 
-  const handleWatchSelect = (watchId: string) => {
-    const watch = DUMMY_WATCHES.find((w) => w.id === watchId)
-    setSelectedWatch(watch || null)
-  }
+  const form = useForm<FormData>({
+    resolver: zodResolver(getCurrentSchema()),
+    mode: "onChange",
+    defaultValues: {}, // optional: you can prefill initial data here
+  });
 
-  const handleImageUpload = (type: "verification" | "accessory", index: number, file: File) => {
-    // In a real app, you'd upload to a server and get back a URL
-    const imageUrl = URL.createObjectURL(file)
+  const {
+    handleSubmit,
+    control,
+    reset,
+    trigger,
+    formState: { errors },
+  } = form;
 
-    if (type === "verification") {
-      const newImages = [...formData.verificationImages]
-      newImages[index] = imageUrl
-      setFormData((prev) => ({ ...prev, verificationImages: newImages }))
+  const onSubmit = async () => {
+    const isStepValid = await trigger();
+
+    if (!isStepValid) {
+      toast.error("Please fix the validation errors before proceeding");
+      return;
+    }
+
+    if (step < totalSteps - 1) {
+      setStep(step + 1);
     } else {
-      const newImages = [...formData.accessoryImages]
-      newImages[index] = imageUrl
-      setFormData((prev) => ({ ...prev, accessoryImages: newImages }))
+      const allData = form.getValues();
+      const finalValidation = fullFormSchema.safeParse(allData);
+
+      if (!finalValidation.success) {
+        toast.error("Please complete all required fields");
+        return;
+      }
+
+      const watchData = finalValidation.data;
+      localStorage.setItem("authenticatedWatchData", JSON.stringify(watchData));
+      console.log("Final watch data:", watchData);
+
+      try {
+        await authenticatedWatchService.createAuthenticatedWatch(watchData);
+        toast.success("Watch data submitted successfully");
+        // reset();
+        setStep(0);
+      } catch (error) {
+        toast.error("Failed to submit authenticated watch data");
+      }
     }
-  }
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!selectedWatch) {
-      alert("Please select a watch")
-      return
+  const handleBack = () => {
+    if (step > 0) {
+      setStep(step - 1);
+      // Update resolver for previous step
     }
-
-    const newAuthentication: WatchAuthentication = {
-      id: Date.now().toString(),
-      watchId: selectedWatch.id,
-      watch: selectedWatch,
-      productVerification: formData.productVerification as any,
-      waterResistantTest: formData.waterResistantTest as any,
-      timegraphTest: formData.timegraphTest as any,
-      description: formData.description,
-      verificationImages: formData.verificationImages.filter((img) => img !== ""),
-      accessoryImages: formData.accessoryImages.filter((img) => img !== ""),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    // Save to localStorage
-    const existing = JSON.parse(localStorage.getItem("authentications") || "[]")
-    existing.push(newAuthentication)
-    localStorage.setItem("authentications", JSON.stringify(existing))
-
-    router.push("/authentications")
-  }
-
-  // Prepare watch options for searchable select
-  const watchOptions = DUMMY_WATCHES.map((watch) => ({
-    value: watch.id,
-    label: `${watch.brand} ${watch.name} - ${watch.model}`,
-    searchTerms:
-      `${watch.brand} ${watch.name} ${watch.model} ${watch.referenceNumber} ${watch.serialNumber}`.toLowerCase(),
-  }))
-
-  if (!user) return null
+  };
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold tracking-tight">Create Watch Authentication</h2>
-          <p className="text-muted-foreground">Add a new watch authentication record</p>
+      <div className="space-y-4">
+        <div className="flex items-center justify-center">
+          {Array.from({ length: totalSteps }).map((_, index) => (
+            <div key={index} className="flex items-center">
+              <div
+                className={cn(
+                  "w-4 h-4 rounded-full transition-all duration-300 ease-in-out",
+                  index <= step ? "bg-primary" : "bg-primary/30",
+                  index < step && "bg-primary"
+                )}
+              />
+              {index < totalSteps - 1 && (
+                <div
+                  className={cn(
+                    "w-8 h-0.5",
+                    index < step ? "bg-primary" : "bg-primary/30"
+                  )}
+                />
+              )}
+            </div>
+          ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Watch Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Watch</CardTitle>
-              <CardDescription>Choose the watch to authenticate</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="watch">Watch</Label>
-                <SearchableSelect
-                  options={watchOptions}
-                  value={selectedWatch?.id}
-                  onValueChange={handleWatchSelect}
-                  placeholder="Search and select a watch..."
-                  searchPlaceholder="Search by brand, model, reference..."
-                  emptyMessage="No watches found."
-                  className="w-full"
-                />
-              </div>
+        <Card className="w-full max-w-2xl mx-auto shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {step === 0
+                ? stepTitles[step]
+                : `Step ${step}: ${stepTitles[step]}`}
+            </CardTitle>
+          </CardHeader>
 
-              {/* Watch Details Display */}
-              {selectedWatch && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Watch Details</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-6">
-                      <div className="w-48 h-48 relative rounded-lg overflow-hidden">
-                        <Image
-                          src={selectedWatch.image || "/placeholder.svg"}
-                          alt={`${selectedWatch.brand} ${selectedWatch.name}`}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Brand</Label>
-                            <p className="text-lg font-semibold">{selectedWatch.brand}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Name</Label>
-                            <p className="text-lg font-semibold">{selectedWatch.name}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Model</Label>
-                            <p className="text-lg">{selectedWatch.model}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Reference Number</Label>
-                            <p className="text-lg">{selectedWatch.referenceNumber}</p>
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-sm font-medium text-muted-foreground">Serial Number</Label>
-                            <p className="text-lg">{selectedWatch.serialNumber}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </CardContent>
-          </Card>
+          <CardContent>
+            {step === 0 && (
+              <UserInformationForm form={form} onSubmit={onSubmit} />
+            )}
 
-          {/* Test Results */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Results</CardTitle>
-              <CardDescription>Select the status for each test</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="productVerification">Product Verification</Label>
-                  <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, productVerification: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="servicing">Servicing</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="waterResistantTest">Water Resistant Test</Label>
-                  <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, waterResistantTest: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="servicing">Servicing</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="timegraphTest">Timegraph Test</Label>
-                  <Select onValueChange={(value) => setFormData((prev) => ({ ...prev, timegraphTest: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="servicing">Servicing</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
-              <CardDescription>Provide detailed information about the watch</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Enter detailed description of the watch condition, history, and any notable features..."
-                value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                rows={4}
+            {step === 1 && (
+              <Step1Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
               />
-            </CardContent>
-          </Card>
+            )}
 
-          {/* Verification Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Verification Images</CardTitle>
-              <CardDescription>Upload up to 4 images for watch verification</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[0, 1, 2, 3].map((index) => (
-                  <div key={index} className="space-y-2">
-                    <Label>Image {index + 1}</Label>
-                    <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                      {formData.verificationImages[index] ? (
-                        <div className="relative w-full h-24">
-                          <Image
-                            src={formData.verificationImages[index] || "/placeholder.svg"}
-                            alt={`Verification ${index + 1}`}
-                            fill
-                            className="object-cover rounded"
-                          />
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500 py-8">Click to upload</div>
-                      )}
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleImageUpload("verification", index, file)
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Accessory Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Accessory Images</CardTitle>
-              <CardDescription>Upload images of boxes, papers, and other peripherals</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label>Accessories Image</Label>
-                <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                  {formData.accessoryImages[0] ? (
-                    <div className="relative w-full h-32">
-                      <Image
-                        src={formData.accessoryImages[0] || "/placeholder.svg"}
-                        alt="Accessories"
-                        fill
-                        className="object-cover rounded"
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 py-8">Click to upload accessories image</div>
-                  )}
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) handleImageUpload("accessory", 0, file)
-                    }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
-            <Button type="button" variant="outline" onClick={() => router.push("/authentications")}>
-              Cancel
-            </Button>
-            <Button type="submit">Create Authentication</Button>
-          </div>
-        </form>
+            {step === 2 && (
+              <Step2Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
+              />
+            )}
+            {step === 3 && (
+              <Step3Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
+              />
+            )}
+            {step === 4 && (
+              <Step4Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
+              />
+            )}
+            {step === 5 && (
+              <Step5Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
+              />
+            )}
+            {step === 6 && (
+              <Step6Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
+              />
+            )}
+            {step === 7 && (
+              <Step7Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
+              />
+            )}
+            {step === 8 && (
+              <Step8Form
+                form={form}
+                onSubmit={onSubmit}
+                onBack={handleBack}
+                step={step}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
-  )
+  );
 }

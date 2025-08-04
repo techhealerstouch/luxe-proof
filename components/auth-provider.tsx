@@ -1,106 +1,195 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { createContext, useContext, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 
 interface User {
-  id: string
-  name: string
-  email: string
-  role: string
+  id: string;
+  account_id: string;
+  name: string;
+  email: string;
+  role: string;
+  businessName?: string;
+  businessSlug?: string;
+  password?: string;
+  password_confirmation?: string;
 }
 
 interface AuthContextType {
-  user: User | null
-  login: (email: string, password: string) => Promise<boolean>
-  register: (name: string, email: string, password: string) => Promise<boolean>
-  logout: () => void
-  updateUser: (userData: Partial<User>) => void
+  user: User | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    businessName: string
+  ) => Promise<boolean>;
+  logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null)
-
-// Dummy users data
-const DUMMY_USERS = [
-  { id: "1", name: "John Doe", email: "admin@example.com", password: "admin123", role: "admin" },
-  { id: "2", name: "Jane Smith", email: "user@example.com", password: "user123", role: "user" },
-]
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     // Check for stored user session
-    const storedUser = localStorage.getItem("user")
+    const storedUser = sessionStorage.getItem("user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser))
+      setUser(JSON.parse(storedUser));
     }
-    setIsLoading(false)
-  }, [])
+    setIsLoading(false);
+  }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const foundUser = DUMMY_USERS.find((u) => u.email === email && u.password === password)
-    if (foundUser) {
-      const userData = { id: foundUser.id, name: foundUser.name, email: foundUser.email, role: foundUser.role }
-      setUser(userData)
-      localStorage.setItem("user", JSON.stringify(userData))
-      return true
-    }
-    return false
-  }
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/luxeproof/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    // Check if user already exists
-    const existingUser = DUMMY_USERS.find((u) => u.email === email)
-    if (existingUser) {
-      return false
+      const data = await response.json();
+      if (response.ok) {
+        sessionStorage.setItem("access_token", data.access_token);
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+        sessionStorage.setItem("loggedIn", "true"); // ✅ mark logged in
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      return false;
     }
+  };
 
-    // Create new user
-    const newUser = {
-      id: Date.now().toString(),
-      name,
-      email,
-      password,
-      role: "user",
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    businessName: string
+  ): Promise<boolean> => {
+    try {
+      const slug = businessName.toLowerCase().replace(/\s+/g, "-");
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/register`,
+        {
+          slug,
+          business_name: businessName,
+          name,
+          email,
+          password,
+        },
+        {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const { data } = response;
+
+      if (data.token) {
+        sessionStorage.setItem("auth_token", data.token);
+      }
+
+      const userData: User = {
+        id: data.user.id,
+        account_id: data.user.account_id,
+        name: data.user.name,
+        email: data.user.email,
+        businessName: data.user.businessName,
+        businessSlug: data.user.businessSlug,
+        role: data.user.role ?? "user",
+      };
+
+      console.log("User data after registration:", userData);
+      setUser(userData);
+      sessionStorage.setItem("user", JSON.stringify(userData));
+
+      return data.message;
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || error?.response?.data?.error;
+      // Instead of returning false, throw an error
+      throw new Error(message);
     }
-    DUMMY_USERS.push(newUser)
-
-    const userData = { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role }
-    setUser(userData)
-    localStorage.setItem("user", JSON.stringify(userData))
-    return true
-  }
+  };
 
   const logout = () => {
-    setUser(null)
-    localStorage.removeItem("user")
-    router.push("/login")
-  }
+    setUser(null);
+    sessionStorage.removeItem("user");
+    router.push("/login");
+  };
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData }
-      setUser(updatedUser)
-      localStorage.setItem("user", JSON.stringify(updatedUser))
+  const updateUser = async (userData: {
+    name?: string;
+    email?: string;
+    password?: string;
+  }) => {
+    const userString = sessionStorage.getItem("user");
+    const token = sessionStorage.getItem("access_token");
+
+    if (!userString || !token) {
+      return;
     }
-  }
+
+    const user = JSON.parse(userString);
+
+    try {
+      const response = await axios.put(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/${user.id}`,
+        userData,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update local state and storage
+      setUser(response.data.data);
+      localStorage.setItem("user", JSON.stringify(response.data.data));
+    } catch (error: any) {
+      if (error.response) {
+        console.error("Validation failed:", error.response.data.errors);
+      } else {
+        console.error("Update failed:", error.message);
+      }
+    }
+  };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
-}
+  return context;
+};

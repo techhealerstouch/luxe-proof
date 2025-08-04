@@ -1,16 +1,32 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useAuth } from "@/components/auth-provider"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Shield, Settings, LogOut, ChevronUp, List, Plus, BarChart3, Menu, X } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Shield,
+  Settings,
+  LogOut,
+  ChevronUp,
+  List,
+  Plus,
+  BarChart3,
+  Menu,
+  X,
+  User,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const menuItems = [
   {
@@ -19,13 +35,18 @@ const menuItems = [
     icon: BarChart3,
   },
   {
+    title: "User List",
+    url: "/users",
+    icon: User,
+  },
+  {
     title: "Authentication List",
     url: "/authentications",
     icon: List,
   },
   {
     title: "Create Authentication",
-    url: "/authentications/create",
+    url: "/authentications/intro",
     icon: Plus,
   },
   {
@@ -33,14 +54,25 @@ const menuItems = [
     url: "/settings",
     icon: Settings,
   },
-]
+];
 
-function AppSidebar({ isOpen, className }: { isOpen: boolean; className?: string }) {
-  const { user, logout } = useAuth()
-  const pathname = usePathname()
+function AppSidebar({
+  isOpen,
+  className,
+}: {
+  isOpen: boolean;
+  className?: string;
+}) {
+  const { user, logout } = useAuth();
+  const pathname = usePathname();
 
   return (
-    <div className={cn("bg-sidebar border-r border-sidebar-border flex flex-col", className)}>
+    <div
+      className={cn(
+        "bg-sidebar border-r border-sidebar-border flex flex-col",
+        className
+      )}
+    >
       {/* Sidebar Header */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
         <Shield className="h-6 w-6" />
@@ -53,7 +85,9 @@ function AppSidebar({ isOpen, className }: { isOpen: boolean; className?: string
           <div className="space-y-1">
             <div className="px-2 py-2">
               {isOpen && (
-                <h2 className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wide">Navigation</h2>
+                <h2 className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wide">
+                  Navigation
+                </h2>
               )}
             </div>
             {menuItems.map((item) => (
@@ -65,7 +99,7 @@ function AppSidebar({ isOpen, className }: { isOpen: boolean; className?: string
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   pathname === item.url
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground",
+                    : "text-sidebar-foreground"
                 )}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
@@ -82,10 +116,15 @@ function AppSidebar({ isOpen, className }: { isOpen: boolean; className?: string
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className={cn("w-full justify-start gap-3 px-3 py-2 h-auto", !isOpen && "justify-center px-2")}
+              className={cn(
+                "w-full justify-start gap-3 px-3 py-2 h-auto",
+                !isOpen && "justify-center px-2"
+              )}
             >
               <Avatar className="h-6 w-6">
-                <AvatarFallback className="text-xs">{user?.name?.charAt(0) || "U"}</AvatarFallback>
+                <AvatarFallback className="text-xs">
+                  {user?.name?.charAt(0) || "U"}
+                </AvatarFallback>
               </Avatar>
               {isOpen && (
                 <>
@@ -110,34 +149,52 @@ function AppSidebar({ isOpen, className }: { isOpen: boolean; className?: string
         </DropdownMenu>
       </div>
     </div>
-  )
+  );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen)
-  }
+    setSidebarOpen(!sidebarOpen);
+  };
 
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <AppSidebar
         isOpen={sidebarOpen}
-        className={cn("transition-all duration-300 ease-in-out", sidebarOpen ? "w-64" : "w-16")}
+        className={cn(
+          "transition-all duration-300 ease-in-out",
+          sidebarOpen ? "w-64" : "w-16"
+        )}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="flex h-16 items-center gap-4 border-b bg-background px-4 shrink-0">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-8 w-8">
-            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="h-8 w-8"
+          >
+            {sidebarOpen ? (
+              <X className="h-4 w-4" />
+            ) : (
+              <Menu className="h-4 w-4" />
+            )}
           </Button>
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-lg">Watch Authentication System</span>
+            <span className="font-semibold text-lg">
+              Watch Authentication System
+            </span>
           </div>
         </header>
 
@@ -147,5 +204,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
-  )
+  );
 }
