@@ -158,7 +158,7 @@ export function Step5Form({ form, onSubmit, onBack, step }: Step5FormProps) {
 
         {/* Notes */}
         <FormField
-          name="notes"
+          name="bracelet_notes"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Notes</FormLabel>

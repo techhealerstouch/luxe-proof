@@ -12,24 +12,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { UseFormReturn } from "react-hook-form";
 
+import { z } from "zod";
+
+export const Step7Schema = z.object({
+  rate_seconds_per_day: z.string().min(1, "Rate is required"),
+  amplitude_degrees: z.string().min(1, "Amplitude is required"),
+  beat_error_ms: z.string().min(1, "Beat error is required"),
+  power_reserve_test_result: z
+    .string()
+    .min(1, "Power reserve result is required"),
+  time_setting_works: z.enum(["yes", "no"]),
+  date_change_works: z.enum(["yes", "no"]),
+  chronograph_works: z.enum(["yes", "no", "na"]),
+  performance_notes: z.string().optional(),
+});
+
+export type Step7FormValues = z.infer<typeof Step7Schema>;
+
+// Default values to ensure all fields start as controlled
+export const Step7DefaultValues: Step7FormValues = {
+  rate_seconds_per_day: "",
+  amplitude_degrees: "",
+  beat_error_ms: "",
+  power_reserve_test_result: "",
+  time_setting_works: "yes",
+  date_change_works: "yes",
+  chronograph_works: "na",
+  performance_notes: "",
+};
+
 type Step7FormProps = {
-  form: UseFormReturn<any>;
-  onSubmit: (data: any) => void;
+  form: UseFormReturn<Step7FormValues>;
+  onSubmit: (data: Step7FormValues) => void;
   onBack: () => void;
   step: number;
 };
 
-export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
-  const { control, handleSubmit } = form;
+export function Step7Form({ form, onSubmit, onBack }: Step7FormProps) {
+  const { handleSubmit } = form;
 
   return (
     <Form {...form}>
@@ -37,11 +59,16 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
         {/* Timegrapher Results */}
         <FormField
           name="rate_seconds_per_day"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Rate (seconds/day)</FormLabel>
               <FormControl>
-                <Input type="text" {...field} />
+                <Input
+                  type="text"
+                  {...field}
+                  value={field.value || ""} // Ensure value is never undefined
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -50,11 +77,16 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
 
         <FormField
           name="amplitude_degrees"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Amplitude (degrees)</FormLabel>
               <FormControl>
-                <Input type="text" {...field} />
+                <Input
+                  type="text"
+                  {...field}
+                  value={field.value || ""} // Ensure value is never undefined
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -63,11 +95,16 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
 
         <FormField
           name="beat_error_ms"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Beat Error (ms)</FormLabel>
               <FormControl>
-                <Input type="text" {...field} />
+                <Input
+                  type="text"
+                  {...field}
+                  value={field.value || ""} // Ensure value is never undefined
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -76,6 +113,7 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
 
         <FormField
           name="power_reserve_test_result"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Power Reserve Test Result</FormLabel>
@@ -84,6 +122,7 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
                   type="text"
                   placeholder="Enter hours or result"
                   {...field}
+                  value={field.value || ""} // Ensure value is never undefined
                 />
               </FormControl>
               <FormMessage />
@@ -94,13 +133,14 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
         {/* Functionality Checks */}
         <FormField
           name="time_setting_works"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Time Setting Works?</FormLabel>
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  value={field.value}
+                  value={field.value || "yes"} // Provide default value
                   className="flex space-x-4"
                 >
                   <FormItem className="flex items-center space-x-2">
@@ -124,13 +164,14 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
 
         <FormField
           name="date_change_works"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Date Change Works?</FormLabel>
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  value={field.value}
+                  value={field.value || "yes"} // Provide default value
                   className="flex space-x-4"
                 >
                   <FormItem className="flex items-center space-x-2">
@@ -154,13 +195,14 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
 
         <FormField
           name="chronograph_works"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Chronograph Works?</FormLabel>
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  value={field.value}
+                  value={field.value || "na"} // Provide default value
                   className="flex space-x-4"
                 >
                   <FormItem className="flex items-center space-x-2">
@@ -190,12 +232,17 @@ export function Step7Form({ form, onSubmit, onBack, step }: Step7FormProps) {
 
         {/* Notes */}
         <FormField
-          name="notes"
+          name="performance_notes"
+          control={form.control}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Notes</FormLabel>
               <FormControl>
-                <Textarea placeholder="Enter additional notes..." {...field} />
+                <Textarea
+                  placeholder="Enter additional notes..."
+                  {...field}
+                  value={field.value || ""} // Ensure value is never undefined
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

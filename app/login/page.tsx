@@ -33,7 +33,6 @@ export default function LoginPage() {
     setError("");
 
     const success = await login(email, password);
-    console.log(success);
     if (success) {
       router.push("/dashboard");
     } else {
@@ -41,7 +40,6 @@ export default function LoginPage() {
     }
     setIsLoading(false);
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
@@ -53,6 +51,7 @@ export default function LoginPage() {
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
+
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
@@ -60,34 +59,32 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-            {/* <div className="text-sm text-gray-600">
-              <p>
-                <strong>Demo Credentials:</strong>
-              </p>
-              <p>Admin: admin@example.com / admin123</p>
-              <p>User: user@example.com / user123</p>
-            </div> */}
           </CardContent>
+
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign in"}

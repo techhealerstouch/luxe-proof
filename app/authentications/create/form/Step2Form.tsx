@@ -30,7 +30,7 @@ type Step2FormProps = {
 };
 
 export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
-  const { control, handleSubmit } = form;
+  const { handleSubmit } = form;
 
   return (
     <Form {...form}>
@@ -41,7 +41,11 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
             <FormItem>
               <FormLabel>Serial Number *</FormLabel>
               <FormControl>
-                <Input {...field} autoComplete="off" />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  autoComplete="off"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -54,7 +58,11 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
             <FormItem>
               <FormLabel>Model Number *</FormLabel>
               <FormControl>
-                <Input {...field} autoComplete="off" />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  autoComplete="off"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -67,7 +75,10 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
             <FormItem className="flex flex-col space-y-2 rounded-md">
               <FormLabel>Where was the serial found?</FormLabel>
               <FormControl>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value ?? ""}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
@@ -90,7 +101,10 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
             <FormItem className="flex flex-col space-y-2 rounded-md border p-4">
               <FormLabel>Match with documents? *</FormLabel>
               <FormControl>
-                <RadioGroup onValueChange={field.onChange} value={field.value}>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  value={field.value ?? ""}
+                >
                   <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <RadioGroupItem value="yes" />
@@ -116,7 +130,10 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
             <FormItem className="flex flex-col space-y-2">
               <FormLabel>Engraving Quality</FormLabel>
               <FormControl>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value ?? ""}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select quality" />
                   </SelectTrigger>
@@ -142,6 +159,7 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
               <FormControl>
                 <Textarea
                   {...field}
+                  value={field.value ?? ""}
                   rows={5}
                   className="resize-none"
                   placeholder="Please provide notes about the serial number..."

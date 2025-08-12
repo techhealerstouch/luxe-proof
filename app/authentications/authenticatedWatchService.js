@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
@@ -14,7 +15,8 @@ const api = axios.create({
 // ✅ POST request to store an authenticated watch using session token
 const createAuthenticatedWatch = async (data) => {
   try {
-    const authToken = sessionStorage.getItem("auth_token"); // or sessionStorage.getItem("token")
+    console.log(data);
+    const authToken = sessionStorage.getItem("auth_token");
 
     const response = await api.post("/auth-products", data, {
       headers: {
@@ -22,9 +24,15 @@ const createAuthenticatedWatch = async (data) => {
       },
     });
 
+    toast.success("Authenticated watch saved successfully!");
     return response.data;
   } catch (error) {
     console.error("Error creating authenticated watch:", error);
+
+    const message =
+      error.response?.data?.message || "Failed to save authenticated watch.";
+
+    toast.error(message);
     throw error.response?.data || error;
   }
 };

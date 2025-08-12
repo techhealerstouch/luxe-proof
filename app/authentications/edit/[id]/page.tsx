@@ -1,27 +1,44 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { useAuth } from "@/components/auth-provider"
-import { useRouter, useParams } from "next/navigation"
-import DashboardLayout from "@/components/dashboard-layout"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SearchableSelect } from "@/components/searchable-select"
-import { DUMMY_WATCHES, type Watch, type WatchAuthentication } from "@/components/watch-data"
-import Image from "next/image"
+import { useState, useEffect } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { useRouter, useParams } from "next/navigation";
+import DashboardLayout from "@/components/dashboard-layout";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/searchable-select";
+import {
+  DUMMY_WATCHES,
+  type Watch,
+  type WatchAuthentication,
+} from "@/components/watch-data";
+import Image from "next/image";
 
 export default function EditAuthenticationPage() {
-  const { user } = useAuth()
-  const router = useRouter()
-  const params = useParams()
-  const [authentication, setAuthentication] = useState<WatchAuthentication | null>(null)
-  const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null)
+  const { user } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const [authentication, setAuthentication] =
+    useState<WatchAuthentication | null>(null);
+  const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null);
   const [formData, setFormData] = useState({
     productVerification: "",
     waterResistantTest: "",
@@ -29,61 +46,71 @@ export default function EditAuthenticationPage() {
     description: "",
     verificationImages: ["", "", "", ""],
     accessoryImages: [""],
-  })
+  });
 
   useEffect(() => {
     if (!user) {
-      router.push("/login")
-      return
+      router.push("/login");
+      return;
     }
 
     // Load authentication data
-    const stored = localStorage.getItem("authentications")
+    const stored = localStorage.getItem("authentications");
     if (stored) {
-      const authentications: WatchAuthentication[] = JSON.parse(stored)
-      const auth = authentications.find((a) => a.id === params.id)
+      const authentications: WatchAuthentication[] = JSON.parse(stored);
+      const auth = authentications.find((a) => a.id === params.id);
       if (auth) {
-        setAuthentication(auth)
-        setSelectedWatch(auth.watch)
+        setAuthentication(auth);
+        setSelectedWatch(auth.watch);
         setFormData({
           productVerification: auth.productVerification,
           waterResistantTest: auth.waterResistantTest,
           timegraphTest: auth.timegraphTest,
           description: auth.description,
-          verificationImages: [...auth.verificationImages, "", "", "", ""].slice(0, 4),
+          verificationImages: [
+            ...auth.verificationImages,
+            "",
+            "",
+            "",
+            "",
+          ].slice(0, 4),
           accessoryImages: [...auth.accessoryImages, ""].slice(0, 1),
-        })
+        });
       } else {
-        router.push("/authentications")
+        router.push("/authentications");
       }
     }
-  }, [user, router, params.id])
+  }, [user, router, params.id]);
 
   const handleWatchSelect = (watchId: string) => {
-    const watch = DUMMY_WATCHES.find((w) => w.id === watchId)
-    setSelectedWatch(watch || null)
-  }
+    const watch = DUMMY_WATCHES.find((w) => w.id === watchId);
+    setSelectedWatch(watch || null);
+  };
 
-  const handleImageUpload = (type: "verification" | "accessory", index: number, file: File) => {
-    const imageUrl = URL.createObjectURL(file)
+  const handleImageUpload = (
+    type: "verification" | "accessory",
+    index: number,
+    file: File
+  ) => {
+    const imageUrl = URL.createObjectURL(file);
 
     if (type === "verification") {
-      const newImages = [...formData.verificationImages]
-      newImages[index] = imageUrl
-      setFormData((prev) => ({ ...prev, verificationImages: newImages }))
+      const newImages = [...formData.verificationImages];
+      newImages[index] = imageUrl;
+      setFormData((prev) => ({ ...prev, verificationImages: newImages }));
     } else {
-      const newImages = [...formData.accessoryImages]
-      newImages[index] = imageUrl
-      setFormData((prev) => ({ ...prev, accessoryImages: newImages }))
+      const newImages = [...formData.accessoryImages];
+      newImages[index] = imageUrl;
+      setFormData((prev) => ({ ...prev, accessoryImages: newImages }));
     }
-  }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!selectedWatch || !authentication) {
-      alert("Missing required data")
-      return
+      alert("Missing required data");
+      return;
     }
 
     const updatedAuthentication: WatchAuthentication = {
@@ -94,24 +121,31 @@ export default function EditAuthenticationPage() {
       waterResistantTest: formData.waterResistantTest as any,
       timegraphTest: formData.timegraphTest as any,
       description: formData.description,
-      verificationImages: formData.verificationImages.filter((img) => img !== ""),
+      verificationImages: formData.verificationImages.filter(
+        (img) => img !== ""
+      ),
       accessoryImages: formData.accessoryImages.filter((img) => img !== ""),
       updatedAt: new Date().toISOString(),
-    }
+    };
 
     // Update in localStorage
-    const stored = localStorage.getItem("authentications")
+    const stored = localStorage.getItem("authentications");
     if (stored) {
-      const authentications: WatchAuthentication[] = JSON.parse(stored)
-      const index = authentications.findIndex((a) => a.id === authentication.id)
+      const authentications: WatchAuthentication[] = JSON.parse(stored);
+      const index = authentications.findIndex(
+        (a) => a.id === authentication.id
+      );
       if (index !== -1) {
-        authentications[index] = updatedAuthentication
-        localStorage.setItem("authentications", JSON.stringify(authentications))
+        authentications[index] = updatedAuthentication;
+        localStorage.setItem(
+          "authentications",
+          JSON.stringify(authentications)
+        );
       }
     }
 
-    router.push("/authentications")
-  }
+    router.push("/authentications");
+  };
 
   // Prepare watch options for searchable select
   const watchOptions = DUMMY_WATCHES.map((watch) => ({
@@ -119,16 +153,20 @@ export default function EditAuthenticationPage() {
     label: `${watch.brand} ${watch.name} - ${watch.model}`,
     searchTerms:
       `${watch.brand} ${watch.name} ${watch.model} ${watch.referenceNumber} ${watch.serialNumber}`.toLowerCase(),
-  }))
+  }));
 
-  if (!user || !authentication) return null
+  if (!user || !authentication) return null;
 
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <h2 className="text-3xl font-bold tracking-tight">Edit Watch Authentication</h2>
-          <p className="text-muted-foreground">Update the watch authentication record</p>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Edit Watch Authentication
+          </h2>
+          <p className="text-muted-foreground">
+            Update the watch authentication record
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -136,7 +174,9 @@ export default function EditAuthenticationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Select Watch</CardTitle>
-              <CardDescription>Choose the watch to authenticate</CardDescription>
+              <CardDescription>
+                Choose the watch to authenticate
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -171,24 +211,42 @@ export default function EditAuthenticationPage() {
                       <div className="flex-1 space-y-3">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Brand</Label>
-                            <p className="text-lg font-semibold">{selectedWatch.brand}</p>
+                            <Label className="text-sm font-medium text-muted-foreground">
+                              Brand
+                            </Label>
+                            <p className="text-lg font-semibold">
+                              {selectedWatch.brand}
+                            </p>
                           </div>
                           <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Name</Label>
-                            <p className="text-lg font-semibold">{selectedWatch.name}</p>
+                            <Label className="text-sm font-medium text-muted-foreground">
+                              Name
+                            </Label>
+                            <p className="text-lg font-semibold">
+                              {selectedWatch.name}
+                            </p>
                           </div>
                           <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Model</Label>
+                            <Label className="text-sm font-medium text-muted-foreground">
+                              Model
+                            </Label>
                             <p className="text-lg">{selectedWatch.model}</p>
                           </div>
                           <div>
-                            <Label className="text-sm font-medium text-muted-foreground">Reference Number</Label>
-                            <p className="text-lg">{selectedWatch.referenceNumber}</p>
+                            <Label className="text-sm font-medium text-muted-foreground">
+                              Reference Number
+                            </Label>
+                            <p className="text-lg">
+                              {selectedWatch.referenceNumber}
+                            </p>
                           </div>
                           <div className="col-span-2">
-                            <Label className="text-sm font-medium text-muted-foreground">Serial Number</Label>
-                            <p className="text-lg">{selectedWatch.serialNumber}</p>
+                            <Label className="text-sm font-medium text-muted-foreground">
+                              Serial Number
+                            </Label>
+                            <p className="text-lg">
+                              {selectedWatch.serialNumber}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -208,10 +266,17 @@ export default function EditAuthenticationPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="productVerification">Product Verification</Label>
+                  <Label htmlFor="productVerification">
+                    Product Verification
+                  </Label>
                   <Select
                     value={formData.productVerification}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, productVerification: value }))}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        productVerification: value,
+                      }))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
@@ -226,10 +291,17 @@ export default function EditAuthenticationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="waterResistantTest">Water Resistant Test</Label>
+                  <Label htmlFor="waterResistantTest">
+                    Water Resistant Test
+                  </Label>
                   <Select
                     value={formData.waterResistantTest}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, waterResistantTest: value }))}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        waterResistantTest: value,
+                      }))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
@@ -247,7 +319,9 @@ export default function EditAuthenticationPage() {
                   <Label htmlFor="timegraphTest">Timegraph Test</Label>
                   <Select
                     value={formData.timegraphTest}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, timegraphTest: value }))}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, timegraphTest: value }))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
@@ -268,13 +342,20 @@ export default function EditAuthenticationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Description</CardTitle>
-              <CardDescription>Provide detailed information about the watch</CardDescription>
+              <CardDescription>
+                Provide detailed information about the watch
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Textarea
                 placeholder="Enter detailed description of the watch condition, history, and any notable features..."
                 value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 rows={4}
               />
             </CardContent>
@@ -284,7 +365,9 @@ export default function EditAuthenticationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Verification Images</CardTitle>
-              <CardDescription>Upload up to 4 images for watch verification</CardDescription>
+              <CardDescription>
+                Upload up to 4 images for watch verification
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -295,22 +378,28 @@ export default function EditAuthenticationPage() {
                       {formData.verificationImages[index] ? (
                         <div className="relative w-full h-24">
                           <Image
-                            src={formData.verificationImages[index] || "/placeholder.svg"}
+                            src={
+                              formData.verificationImages[index] ||
+                              "/placeholder.svg"
+                            }
                             alt={`Verification ${index + 1}`}
                             fill
                             className="object-cover rounded"
                           />
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-500 py-8">Click to upload</div>
+                        <div className="text-sm text-gray-500 py-8">
+                          Click to upload
+                        </div>
                       )}
                       <Input
                         type="file"
                         accept="image/*"
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleImageUpload("verification", index, file)
+                          const file = e.target.files?.[0];
+                          if (file)
+                            handleImageUpload("verification", index, file);
                         }}
                       />
                     </div>
@@ -324,7 +413,9 @@ export default function EditAuthenticationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Accessory Images</CardTitle>
-              <CardDescription>Upload images of boxes, papers, and other peripherals</CardDescription>
+              <CardDescription>
+                Upload images of boxes, papers, and other peripherals
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -340,15 +431,17 @@ export default function EditAuthenticationPage() {
                       />
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500 py-8">Click to upload accessories image</div>
+                    <div className="text-sm text-gray-500 py-8">
+                      Click to upload accessories image
+                    </div>
                   )}
                   <Input
                     type="file"
                     accept="image/*"
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) handleImageUpload("accessory", 0, file)
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload("accessory", 0, file);
                     }}
                   />
                 </div>
@@ -358,7 +451,11 @@ export default function EditAuthenticationPage() {
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-4">
-            <Button type="button" variant="outline" onClick={() => router.push("/authentications")}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/authentications")}
+            >
               Cancel
             </Button>
             <Button type="submit">Update Authentication</Button>
@@ -366,5 +463,5 @@ export default function EditAuthenticationPage() {
         </form>
       </div>
     </DashboardLayout>
-  )
+  );
 }

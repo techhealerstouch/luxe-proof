@@ -136,7 +136,7 @@ export function Step4Form({ form, onSubmit, onBack, step }: Step4FormProps) {
 
         {/* Notes */}
         <FormField
-          name="notes"
+          name="dial_notes"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Notes</FormLabel>
