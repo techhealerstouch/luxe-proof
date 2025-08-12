@@ -58,7 +58,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({ email, password }),
         }
       );
-
       const data = await response.json();
       if (response.ok) {
         sessionStorage.setItem("access_token", data.access_token);
@@ -114,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: data.user.role ?? "user",
       };
 
-      console.log("User data after registration:", userData);
       setUser(userData);
       sessionStorage.setItem("user", JSON.stringify(userData));
 

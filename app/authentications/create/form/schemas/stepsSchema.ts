@@ -132,7 +132,7 @@ export const step3Schema = z.object({
     required_error: "Please select crown logo sharpness",
   }),
 
-  notes: z.string().optional(),
+  case_notes: z.string().optional(),
 });
 
 export const step4Schema = z.object({
@@ -148,7 +148,7 @@ export const step4Schema = z.object({
   date_alignment: z.enum(["yes", "no"], {
     required_error: "Date alignment is required",
   }),
-  notes: z.string().optional(),
+  dial_notes: z.string().optional(),
 });
 
 export const step5Schema = z.object({
@@ -172,7 +172,7 @@ export const step5Schema = z.object({
     required_error: "Clasp engraving type is required",
   }),
 
-  notes: z.string().optional(),
+  bracelet_notes: z.string().optional(),
 });
 
 export const step6Schema = z.object({
@@ -194,7 +194,7 @@ export const step6Schema = z.object({
     required_error: "Select an option for blue Parachrom hairspring",
   }),
 
-  notes: z.string().optional(),
+  movement_notes: z.string().optional(),
 });
 
 export const step7Schema = z.object({
@@ -235,7 +235,7 @@ export const step7Schema = z.object({
     required_error: "Chronograph field is required",
   }),
 
-  notes: z.string().optional(),
+  performance_notes: z.string().optional(),
 });
 
 export const step8Schema = z.object({

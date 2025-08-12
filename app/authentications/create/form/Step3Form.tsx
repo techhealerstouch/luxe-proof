@@ -218,7 +218,7 @@ export function Step3Form({ form, onSubmit, onBack, step }: Step3FormProps) {
 
         {/* Notes */}
         <FormField
-          name="notes"
+          name="case_notes"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Notes</FormLabel>

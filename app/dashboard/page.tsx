@@ -1,11 +1,21 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useAuth } from "@/components/auth-provider"
-import { useRouter } from "next/navigation"
-import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { useState, useEffect } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { useRouter } from "next/navigation";
+import DashboardLayout from "@/components/dashboard-layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
   BarChart,
   Bar,
@@ -18,16 +28,16 @@ import {
   Cell,
   LineChart,
   Line,
-} from "recharts"
-import { type WatchAuthentication, INITIAL_AUTHENTICATIONS } from "@/components/watch-data"
-import { Shield, Clock, CheckCircle, AlertCircle } from "lucide-react"
+} from "recharts";
+
+import { Shield, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
 const statusData = [
   { name: "Available", value: 45, color: "#10b981" },
   { name: "Servicing", value: 25, color: "#f59e0b" },
   { name: "Reserved", value: 20, color: "#3b82f6" },
   { name: "Sold", value: 10, color: "#ef4444" },
-]
+];
 
 const monthlyData = [
   { month: "Jan", authentications: 12, revenue: 24000 },
@@ -36,7 +46,7 @@ const monthlyData = [
   { month: "Apr", authentications: 22, revenue: 44000 },
   { month: "May", authentications: 28, revenue: 56000 },
   { month: "Jun", authentications: 25, revenue: 50000 },
-]
+];
 
 const brandData = [
   { brand: "Rolex", count: 35 },
@@ -44,53 +54,50 @@ const brandData = [
   { brand: "Patek Philippe", count: 15 },
   { brand: "Audemars Piguet", count: 12 },
   { brand: "Cartier", count: 10 },
-]
+];
 
 export default function DashboardPage() {
-  const { user } = useAuth()
-  const router = useRouter()
-  const [authentications, setAuthentications] = useState<WatchAuthentication[]>([])
+  const { user } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (!user) {
-      router.push("/login")
-      return
+      router.push("/login");
+      return;
     }
+  }, [user, router]);
 
-    // Load authentications from localStorage or use initial data
-    const stored = localStorage.getItem("authentications")
-    if (stored) {
-      setAuthentications(JSON.parse(stored))
-    } else {
-      setAuthentications(INITIAL_AUTHENTICATIONS)
-    }
-  }, [user, router])
+  if (!user) return null;
 
-  if (!user) return null
-
-  const totalAuthentications = authentications.length
-  const availableCount = authentications.filter((auth) => auth.productVerification === "available").length
-  const servicingCount = authentications.filter((auth) => auth.productVerification === "servicing").length
-  const soldCount = authentications.filter((auth) => auth.productVerification === "sold").length
+  const totalAuthentications = 2;
+  const availableCount = 2;
+  const servicingCount = 2;
+  const soldCount = 1;
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">Overview of your watch authentication business</p>
+          <p className="text-muted-foreground">
+            Overview of your watch authentication business
+          </p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Authentications</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Authentications
+              </CardTitle>
               <Shield className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalAuthentications}</div>
-              <p className="text-xs text-muted-foreground">+12% from last month</p>
+              <p className="text-xs text-muted-foreground">
+                +12% from last month
+              </p>
             </CardContent>
           </Card>
 
@@ -107,7 +114,9 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Servicing</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                In Servicing
+              </CardTitle>
               <Clock className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
@@ -133,7 +142,9 @@ export default function DashboardPage() {
           <Card className="col-span-4">
             <CardHeader>
               <CardTitle>Monthly Authentications</CardTitle>
-              <CardDescription>Number of authentications processed each month</CardDescription>
+              <CardDescription>
+                Number of authentications processed each month
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -151,7 +162,10 @@ export default function DashboardPage() {
                     <XAxis dataKey="month" />
                     <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="authentications" fill="var(--color-authentications)" />
+                    <Bar
+                      dataKey="authentications"
+                      fill="var(--color-authentications)"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -200,7 +214,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Revenue Trend</CardTitle>
-              <CardDescription>Monthly revenue from authentications</CardDescription>
+              <CardDescription>
+                Monthly revenue from authentications
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -218,7 +234,12 @@ export default function DashboardPage() {
                     <XAxis dataKey="month" />
                     <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="var(--color-revenue)"
+                      strokeWidth={2}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -255,5 +276,5 @@ export default function DashboardPage() {
         </div>
       </div>
     </DashboardLayout>
-  )
+  );
 }

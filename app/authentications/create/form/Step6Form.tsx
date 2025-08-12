@@ -1,4 +1,3 @@
-// components/forms/Step6Form.tsx
 "use client";
 
 import {
@@ -31,9 +30,9 @@ type Step6FormProps = {
 };
 
 export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
-  const { control, handleSubmit, watch, setValue } = form;
+  const { handleSubmit, watch, setValue } = form;
 
-  const decorativeFinishing = watch("decorative_finishing") || [];
+  const decorativeFinishing = watch("decorative_finishing") ?? [];
 
   const handleCheckboxChange = (value: string) => {
     const current = new Set(decorativeFinishing);
@@ -55,7 +54,11 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
             <FormItem>
               <FormLabel>Movement Caliber Number</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Enter caliber number" />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Enter caliber number"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -69,7 +72,10 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
             <FormItem>
               <FormLabel>Engraving Quality</FormLabel>
               <FormControl>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value ?? ""}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select quality" />
                   </SelectTrigger>
@@ -96,7 +102,10 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
                 <FormItem className="flex items-center space-x-2">
                   <FormControl>
                     <Checkbox
-                      checked={decorativeFinishing?.includes(label)}
+                      checked={
+                        Array.isArray(decorativeFinishing) &&
+                        decorativeFinishing.includes(label)
+                      }
                       onCheckedChange={() => handleCheckboxChange(label)}
                     />
                   </FormControl>
@@ -114,7 +123,11 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
             <FormItem>
               <FormLabel>Other (Decorative Finishing)</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Enter other decorations" />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Enter other decorations"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,7 +142,7 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
               <FormLabel>Purple Reversing Wheels</FormLabel>
               <FormControl>
                 <RadioGroup
-                  value={field.value}
+                  value={field.value ?? ""}
                   onValueChange={field.onChange}
                   className="flex gap-4"
                 >
@@ -160,7 +173,7 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
               <FormLabel>Blue Parachrom Hairspring</FormLabel>
               <FormControl>
                 <RadioGroup
-                  value={field.value}
+                  value={field.value ?? ""}
                   onValueChange={field.onChange}
                   className="flex gap-4"
                 >
@@ -185,7 +198,7 @@ export function Step6Form({ form, onSubmit, onBack, step }: Step6FormProps) {
 
         {/* Notes */}
         <FormField
-          name="notes"
+          name="movement_notes"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Notes</FormLabel>

@@ -59,7 +59,7 @@ export default function CreateAuthenticationPage() {
     "Provenance & Documentation Audit",
     "Serial & Model Number Cross-Reference",
     "Case, Bezel, and Crystal Analysis", // Step 3
-    "Case, Bezel, and Crystal Analysis", // Step 4
+    "Dial, Hands, and Date Scrutiny", // Step 4
     "Bracelet/Strap and Clasp Inspection",
     "Movement Examination",
     "Performance & Function Test",
@@ -124,15 +124,11 @@ export default function CreateAuthenticationPage() {
         toast.error("Please complete all required fields");
         return;
       }
-
       const watchData = finalValidation.data;
-      localStorage.setItem("authenticatedWatchData", JSON.stringify(watchData));
       console.log("Final watch data:", watchData);
-
       try {
         await authenticatedWatchService.createAuthenticatedWatch(watchData);
         toast.success("Watch data submitted successfully");
-        // reset();
         setStep(0);
       } catch (error) {
         toast.error("Failed to submit authenticated watch data");
