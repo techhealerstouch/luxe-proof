@@ -4,19 +4,18 @@ import type React from "react";
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { authService } from "@/lib/auth-service";
 import axios from "axios";
 
 interface User {
-  id: string;
-  account_id: string;
   name: string;
   email: string;
-  role: string;
-  businessName?: string;
-  businessSlug?: string;
-  password?: string;
-  password_confirmation?: string;
+  account: {
+    name: string;
+    slug: string;
+  };
 }
+
 
 interface AuthContextType {
   user: User | null;
@@ -31,20 +30,35 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    // Check for stored user session
-    const storedUser = sessionStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+ useEffect(() => {
+    const loadUser = async () => {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+      } catch (err) {
+        console.error("Invalid access token, logging out.");
+        localStorage.removeItem("accessToken");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUser();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -60,9 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       const data = await response.json();
       if (response.ok) {
-        sessionStorage.setItem("access_token", data.access_token);
-        sessionStorage.setItem("user", JSON.stringify(data.user));
-        sessionStorage.setItem("loggedIn", "true"); // ✅ mark logged in
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("loggedIn", "true"); // ✅ mark logged in
         return true;
       } else {
         return false;
@@ -100,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = response;
 
       if (data.token) {
-        sessionStorage.setItem("auth_token", data.token);
+        localStorage.setItem("accessToken", data.token);
       }
 
       const userData: User = {
@@ -125,10 +139,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    sessionStorage.removeItem("user");
-    router.push("/login");
+  const logout = async () => {
+    try {
+      await authService.logout();
+      // Server will clear the HTTP-only refresh token cookie
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      localStorage.removeItem("accessToken");
+      setUser(null);
+    }
   };
 
   const updateUser = async (userData: {

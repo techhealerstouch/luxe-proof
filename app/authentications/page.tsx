@@ -493,7 +493,7 @@ export default function AuthenticationsPage() {
 
   const fetchData = async () => {
     try {
-      const token = sessionStorage.getItem("auth_token");
+      const token = localStorage.getItem("accessToken");
 
       if (!token) throw new Error("Access token not found in session storage");
 
