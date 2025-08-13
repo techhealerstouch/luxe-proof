@@ -172,22 +172,6 @@ export function Step5Form({ form, onSubmit, onBack, step }: Step5FormProps) {
             </FormItem>
           )}
         />
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between">
-          <Button
-            type="button"
-            className="font-medium"
-            size="sm"
-            onClick={onBack}
-            disabled={step === 0}
-          >
-            Back
-          </Button>
-          <Button type="submit" size="sm" className="font-medium">
-            Next
-          </Button>
-        </div>
       </form>
     </Form>
   );
