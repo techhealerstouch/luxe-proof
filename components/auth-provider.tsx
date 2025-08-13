@@ -4,25 +4,18 @@ import type React from "react";
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { authService } from "@/lib/auth-service";
 import axios from "axios";
-import { toast } from "sonner";
 
 interface User {
-  id: string;
-  account_id: string;
   name: string;
   email: string;
-  role: string;
-  businessName?: string;
-  businessSlug?: string;
-  password?: string;
-  password_confirmation?: string;
-  account: Account;
+  account: {
+    name: string;
+    slug: string;
+  };
 }
-interface Account {
-  name: string;
-  slug: string;
-}
+
 
 interface AuthContextType {
   user: User | null;
@@ -34,27 +27,38 @@ interface AuthContextType {
     businessName: string
   ) => Promise<boolean>;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => Promise<User | void>;
-  changePassword: (
-    currentPassword: string,
-    newPassword: string,
-    confirmPassword: string
-  ) => Promise<void>;
+  updateUser: (userData: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const storedUser = sessionStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+ useEffect(() => {
+    const loadUser = async () => {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+      } catch (err) {
+        console.error("Invalid access token, logging out.");
+        localStorage.removeItem("accessToken");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUser();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -70,17 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       const data = await response.json();
       if (response.ok) {
-        sessionStorage.setItem("auth_token", data.access_token);
-
-        // Assign account explicitly if returned
-        const userWithAccount: User = {
-          ...data.user,
-          account: data.account || null,
-        };
-        sessionStorage.setItem("user", JSON.stringify(userWithAccount));
-        setUser(userWithAccount);
-
-        sessionStorage.setItem("loggedIn", "true");
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("loggedIn", "true"); // ✅ mark logged in
         return true;
       } else {
         return false;
@@ -118,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = response;
 
       if (data.token) {
-        sessionStorage.setItem("auth_token", data.token);
+        localStorage.setItem("accessToken", data.token);
       }
 
       const userData: User = {
@@ -126,63 +122,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         account_id: data.user.account_id,
         name: data.user.name,
         email: data.user.email,
+        businessName: data.user.businessName,
+        businessSlug: data.user.businessSlug,
         role: data.user.role ?? "user",
-        account: {
-          name: data.account.name,
-          slug: data.account.slug,
-        },
       };
 
       setUser(userData);
       sessionStorage.setItem("user", JSON.stringify(userData));
 
-      console.log(data.message);
-      return true;
+      return data.message;
     } catch (error: any) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        "Registration failed";
+        error?.response?.data?.message || error?.response?.data?.error;
+      // Instead of returning false, throw an error
       throw new Error(message);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    sessionStorage.removeItem("user");
-    sessionStorage.removeItem("auth_token");
-    router.push("/login");
+  const logout = async () => {
+    try {
+      await authService.logout();
+      // Server will clear the HTTP-only refresh token cookie
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      localStorage.removeItem("accessToken");
+      setUser(null);
+    }
   };
 
   const updateUser = async (userData: {
     name?: string;
     email?: string;
     password?: string;
-    businessSlug?: string;
-    businessName?: string;
-    password_confirmation?: string;
-  }): Promise<User | void> => {
+  }) => {
     const userString = sessionStorage.getItem("user");
-    const token = sessionStorage.getItem("auth_token");
+    const token = sessionStorage.getItem("access_token");
 
-    if (!userString || !token) return;
+    if (!userString || !token) {
+      return;
+    }
 
-    const currentUser: User = JSON.parse(userString);
+    const user = JSON.parse(userString);
 
     try {
-      const payload: any = {
-        name: userData.name ?? currentUser.name,
-        email: userData.email ?? currentUser.email,
-        account: {
-          name: userData.businessName ?? currentUser.account?.name ?? "",
-          slug: userData.businessSlug ?? currentUser.account?.slug ?? "",
-        },
-      };
-
-      // Do not include password here for security — handle password changes separately
       const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user`,
-        payload,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/${user.id}`,
+        userData,
         {
           headers: {
             Accept: "application/json",
@@ -191,60 +177,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       );
 
+      // Update local state and storage
       setUser(response.data.data);
-      sessionStorage.setItem("user", JSON.stringify(response.data.data));
-      toast.success("Profile Updated Successfully!");
-      return response.data.data;
+      localStorage.setItem("user", JSON.stringify(response.data.data));
     } catch (error: any) {
       if (error.response) {
-        toast.error("Profile Update Failed!");
-        throw error.response.data.errors;
-      }
-      toast.error("Profile Update Failed!", error.message);
-      throw error;
-    }
-  };
-
-  // New: Change password function calling dedicated endpoint
-  const changePassword = async (
-    currentPassword: string,
-    newPassword: string,
-    confirmPassword: string
-  ): Promise<void> => {
-    const token = sessionStorage.getItem("auth_token");
-    if (!token) throw new Error("User is not authenticated");
-
-    try {
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/change-password`,
-        {
-          currentPassword,
-          newPassword,
-          newPassword_confirmation: confirmPassword,
-        },
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      toast.success("Password changed successfully!");
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-        throw new Error(error.response.data.message);
+        console.error("Validation failed:", error.response.data.errors);
       } else {
-        toast.error("Failed to change password. Please try again.");
-        throw new Error("Failed to change password. Please try again.");
+        console.error("Update failed:", error.message);
       }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider
-      value={{ user, login, register, logout, updateUser, changePassword }}
-    >
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

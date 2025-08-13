@@ -38,6 +38,36 @@ import { useForm } from "react-hook-form";
 export default function EditAuthenticationPage() {
   const { user } = useAuth();
   const router = useRouter();
+
+  const [authentications, setAuthentications] = useState<WatchAuthentication[]>(
+    []
+  );
+
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 250);
+
+  const { detailsMap, loadingMap, fetchUserDetails } = useUserDetails();
+  const { fetchProvenanceDocumentationAudit } = useProvenanceAudit();
+
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      if (!token) throw new Error("Access token not found in session storage");
+
+      const res = await fetch("http://localhost:8000/api/auth-products", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch data");
+
+      const json = await res.json();
+      const authenticatedWatches = json.data;
+
   const params = useParams();
   const [tabValue, setTabValue] = useState("step1");
 
@@ -51,6 +81,7 @@ export default function EditAuthenticationPage() {
       service_history_notes: "",
     },
   });
+
 
   const form2 = useForm({
     defaultValues: {
