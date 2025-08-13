@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
@@ -18,73 +17,125 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Eye, EyeOff } from "lucide-react";
+import { z } from "zod";
+
+// ✅ Profile Schema
+const profileSchema = z.object({
+  name: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+});
+
+// ✅ Password Schema
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z
+      .string()
+      .min(6, "New password must be at least 6 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "New passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
+  const { changePassword } = useAuth();
+
   const router = useRouter();
+
+  // ✅ Always initialize with string defaults
   const [formData, setFormData] = useState({
     name: "",
+    businessName: "",
+    businessSlug: "",
     email: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Password visibility state
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   useEffect(() => {
     if (!user) {
       router.push("/login");
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      name: user.name,
-      email: user.email,
-    }));
+    setFormData({
+      name: user?.name || "",
+      email: user?.email || "",
+      businessName: user?.account.name || "",
+      businessSlug: user.account.slug || "",
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
   }, [user, router]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setMessage("");
 
+    const result = profileSchema.safeParse({
+      name: formData.name,
+      email: formData.email,
+      businessName: formData.businessName,
+      businessSlug: formData.businessSlug,
+    });
+
+    if (!result.success) {
+      setMessage(result.error.errors[0].message);
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      updateUser({
+      await updateUser({
         name: formData.name,
         email: formData.email,
+        businessName: formData.businessName,
+        businessSlug: formData.businessSlug,
       });
+
       setMessage("Profile updated successfully!");
-    } catch (error) {
+    } catch {
       setMessage("Failed to update profile");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setMessage("");
 
-    if (formData.newPassword !== formData.confirmPassword) {
-      setMessage("New passwords do not match");
-      setIsLoading(false);
+    const result = passwordSchema.safeParse({
+      currentPassword: formData.currentPassword,
+      newPassword: formData.newPassword,
+      confirmPassword: formData.confirmPassword,
+    });
+
+    if (!result.success) {
+      setMessage(result.error.errors[0].message);
       return;
     }
 
-    if (formData.newPassword.length < 6) {
-      setMessage("New password must be at least 6 characters");
-      setIsLoading(false);
-      return;
-    }
-
+    setIsLoading(true);
     try {
-      await updateUser({
-        password: formData.newPassword,
-        password_confirmation: formData.confirmPassword, // ✅ Required by Laravel
-      });
-
+      await changePassword(
+        formData.currentPassword,
+        formData.newPassword,
+        formData.confirmPassword
+      );
       setMessage("Password updated successfully!");
       setFormData((prev) => ({
         ...prev,
@@ -92,14 +143,12 @@ export default function SettingsPage() {
         newPassword: "",
         confirmPassword: "",
       }));
-    } catch (error) {
-      console.error("Password update failed:", error);
-      setMessage("Failed to update password. Please try again.");
+    } catch (error: any) {
+      setMessage(error.message);
     } finally {
       setIsLoading(false);
     }
   };
-
   if (!user) return null;
 
   return (
@@ -134,11 +183,11 @@ export default function SettingsPage() {
                   <Input
                     id="name"
                     type="text"
+                    className="rounded-xl"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -146,6 +195,7 @@ export default function SettingsPage() {
                   <Input
                     id="email"
                     type="email"
+                    className="rounded-xl"
                     disabled
                     value={formData.email}
                     onChange={(e) =>
@@ -154,7 +204,37 @@ export default function SettingsPage() {
                         email: e.target.value,
                       }))
                     }
-                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <Input
+                    id="businessName"
+                    type="text"
+                    className="rounded-xl"
+                    value={formData.businessName}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        businessName: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="businessSlug">Business Slug</Label>
+                  <Input
+                    id="businessSlug"
+                    type="text"
+                    className="rounded-xl"
+                    value={formData.businessSlug}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        businessSlug: e.target.value, // ✅ fixed bug
+                      }))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -163,7 +243,11 @@ export default function SettingsPage() {
                   </Label>
                   <p className="text-sm capitalize">{user.role}</p>
                 </div>
-                <Button type="submit" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="rounded-xl"
+                >
                   {isLoading ? "Updating..." : "Update Profile"}
                 </Button>
               </form>
@@ -182,11 +266,12 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <Label htmlFor="currentPassword">Current Password</Label>
                   <Input
                     id="currentPassword"
-                    type="password"
+                    type={showCurrent ? "text" : "password"}
+                    className="rounded-xl pr-10"
                     value={formData.currentPassword}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -194,14 +279,22 @@ export default function SettingsPage() {
                         currentPassword: e.target.value,
                       }))
                     }
-                    required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrent((prev) => !prev)}
+                    className="absolute right-3 top-9 text-gray-500"
+                  >
+                    {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-2 relative">
                   <Label htmlFor="newPassword">New Password</Label>
                   <Input
                     id="newPassword"
-                    type="password"
+                    type={showNew ? "text" : "password"}
+                    className="rounded-xl pr-10"
                     value={formData.newPassword}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -209,14 +302,22 @@ export default function SettingsPage() {
                         newPassword: e.target.value,
                       }))
                     }
-                    required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew((prev) => !prev)}
+                    className="absolute right-3 top-9 text-gray-500"
+                  >
+                    {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-2 relative">
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
                   <Input
                     id="confirmPassword"
-                    type="password"
+                    type={showConfirm ? "text" : "password"}
+                    className="rounded-xl pr-10"
                     value={formData.confirmPassword}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -224,10 +325,21 @@ export default function SettingsPage() {
                         confirmPassword: e.target.value,
                       }))
                     }
-                    required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((prev) => !prev)}
+                    className="absolute right-3 top-9 text-gray-500"
+                  >
+                    {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
-                <Button type="submit" disabled={isLoading}>
+
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="rounded-xl"
+                >
                   {isLoading ? "Updating..." : "Change Password"}
                 </Button>
               </form>
@@ -249,6 +361,18 @@ export default function SettingsPage() {
                     User ID
                   </Label>
                   <p className="text-sm">{user.id}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Business Name
+                  </Label>
+                  <p className="text-sm">{formData.businessName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Business Slug
+                  </Label>
+                  <p className="text-sm">{formData.businessSlug}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">

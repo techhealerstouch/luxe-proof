@@ -1,486 +1,44 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import axios from "axios";
 import {
-  AlertDialog,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
-import DeleteConfirmationDialog from "./components/DeleteConfirmationDialog";
-import Link from "next/link";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-} from "@tanstack/react-table";
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+import { FileInput } from "@/components/ui/file-input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { useForm } from "react-hook-form";
 
-import { Eye, Pencil, Trash, Plus } from "lucide-react";
-import { useUserDetails, useProvenanceAudit } from "@/hooks/useDetails";
-
-import type { WatchAuthentication } from "@/components/watch-data";
-
-// --- Debounce helper ---
-function useDebounce<T>(value: T, delay = 300): T {
-  const [debounced, setDebounced] = useState<T>(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
-}
-
-// --- Columns factory ---
-const getColumns = (
-  detailsMap: Record<string, any>,
-  loadingMap: Record<string, boolean>,
-  handleView: (id: string) => void,
-  handleEdit: (id: string) => void,
-  fetchData: () => void
-): ColumnDef<WatchAuthentication>[] => [
-  {
-    accessorKey: "user_information",
-    header: "User Information",
-    cell: ({ row }) => {
-      const item = row.original as any;
-      return <div>{item.user_information}</div>;
-    },
-  },
-
-  {
-    accessorKey: "provenance_documentation_audit",
-    header: "Provenance & Documentation Audit",
-    cell: ({ row }) => {
-      const item = row.original as any;
-
-      const provenance = item.provenance_documentation_audit;
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              View Details
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 text-sm space-y-2">
-            <div>
-              <strong>Authorized Dealer:</strong>{" "}
-              {provenance.is_authorized_dealer ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Warranty Card:</strong>{" "}
-              {provenance.warranty_card_path ?? "N/A"}
-            </div>
-            <div>
-              <strong>Purchase Receipts:</strong>{" "}
-              {provenance.purchase_receipt_path ?? "N/A"}
-            </div>
-            <div>
-              <strong>Service Records:</strong>{" "}
-              {provenance.service_records_path ?? "N/A"}
-            </div>
-            <div>
-              <strong>Warranty Card Notes:</strong>
-              <br />
-              {provenance.warranty_card_notes || "N/A"}
-            </div>
-            <div>
-              <strong>Service History Notes:</strong>
-              <br />
-              {provenance.service_history_notes || "N/A"}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    },
-  },
-
-  {
-    accessorKey: "serial_and_model_number_cross_reference",
-    header: "Serial & Model Number Cross-Reference",
-    cell: ({ row }) => {
-      const item = row.original as any;
-      const serial = item.serial_and_model_number_cross_reference;
-
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              View Details
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 text-sm space-y-2">
-            <div>
-              <strong>Engraving Quality:</strong>{" "}
-              {serial.engraving_quality || "N/A"}
-            </div>
-            <div>
-              <strong>Matches Documents:</strong>{" "}
-              {serial.matches_documents ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Model Number:</strong> {serial.model_number || "N/A"}
-            </div>
-            <div>
-              <strong>Notes:</strong>
-              <br />
-              {serial.notes || "N/A"}
-            </div>
-            <div>
-              <strong>Serial Found Location:</strong>{" "}
-              {serial.serial_found_location || "N/A"}
-            </div>
-            <div>
-              <strong>Serial Number:</strong> {serial.serial_number || "N/A"}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    },
-  },
-
-  {
-    accessorKey: "case_bezel_and_crystal_analysis",
-    header: "Case, Bezel, and Crystal Analysis",
-    cell: ({ row }) => {
-      const item = row.original as any;
-      const case_bezel_and_crystal = item.case_bezel_and_crystal_analysis;
-
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              View Details
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-96 text-sm space-y-2">
-            <div>
-              <strong>Bezel Action:</strong>{" "}
-              {case_bezel_and_crystal.bezel_action || "N/A"}
-            </div>
-            <div>
-              <strong>Case Material Verified:</strong>{" "}
-              {case_bezel_and_crystal.case_material_verified ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Case Weight Feel:</strong>{" "}
-              {case_bezel_and_crystal.case_weight_feel || "N/A"}
-            </div>
-            <div>
-              <strong>Crown Logo Sharpness:</strong>{" "}
-              {case_bezel_and_crystal.crown_logo_sharpness || "N/A"}
-            </div>
-            <div>
-              <strong>Crystal Type:</strong>{" "}
-              {case_bezel_and_crystal.crystal_type || "N/A"}
-            </div>
-            <div>
-              <strong>Finishing Transitions:</strong>{" "}
-              {case_bezel_and_crystal.finishing_transitions || "N/A"}
-            </div>
-            <div>
-              <strong>Laser Etched Crown:</strong>{" "}
-              {case_bezel_and_crystal.laser_etched_crown ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Notes:</strong>
-              <br />
-              {case_bezel_and_crystal.notes || "N/A"}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    },
-  },
-
-  {
-    accessorKey: "dial_hands_and_date_scrutiny",
-    header: "Dial, Hands, and Date Scrutiny",
-    cell: ({ row }) => {
-      const item = row.original as any;
-      const dial_hands_and_date = item.dial_hands_and_date_scrutiny;
-
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              View Details
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-96 text-sm space-y-2">
-            <div>
-              <strong>Dial Text Quality:</strong>{" "}
-              {dial_hands_and_date.dial_text_quality || "N/A"}
-            </div>
-            <div>
-              <strong>Case Material Verified:</strong>{" "}
-              {dial_hands_and_date.case_material_verified ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Case Weight Feel:</strong>{" "}
-              {dial_hands_and_date.case_weight_feel || "N/A"}
-            </div>
-            <div>
-              <strong>Crown Logo Sharpness:</strong>{" "}
-              {dial_hands_and_date.crown_logo_sharpness || "N/A"}
-            </div>
-            <div>
-              <strong>Crystal Type:</strong>{" "}
-              {dial_hands_and_date.crystal_type || "N/A"}
-            </div>
-            <div>
-              <strong>Finishing Transitions:</strong>{" "}
-              {dial_hands_and_date.finishing_transitions || "N/A"}
-            </div>
-            <div>
-              <strong>Laser Etched Crown:</strong>{" "}
-              {dial_hands_and_date.laser_etched_crown ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Notes:</strong>
-              <br />
-              {dial_hands_and_date.notes || "N/A"}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    },
-  },
-
-  {
-    accessorKey: "bracelet_strap_and_clasp_inspection",
-    header: "Bracelet/Strap and Clasp Inspection",
-    cell: ({ row }) => {
-      const item = row.original as any;
-      const bracelet_analysis = item.bracelet_strap_and_clasp_inspection;
-
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              View Details
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-96 text-sm space-y-2">
-            <div>
-              <strong>Bracelet Link Type:</strong>{" "}
-              {bracelet_analysis.bracelet_link_type || "N/A"}
-            </div>
-            <div>
-              <strong>Clasp Action:</strong>{" "}
-              {bracelet_analysis.clasp_action || "N/A"}
-            </div>
-            <div>
-              <strong>Clasp Engravings:</strong>{" "}
-              {bracelet_analysis.clasp_engravings || "N/A"}
-            </div>
-            <div>
-              <strong>Connection Type:</strong>{" "}
-              {bracelet_analysis.connection_type || "N/A"}
-            </div>
-            <div>
-              <strong>Micro Adjustment Functioning:</strong>{" "}
-              {bracelet_analysis.micro_adjustment_functioning ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Notes:</strong>
-              <br />
-              {bracelet_analysis.notes || "N/A"}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    },
-  },
-  {
-    accessorKey: "movement_examination",
-    header: "Movement Examination",
-    cell: ({ row }) => {
-      const item = row.original as any;
-      const movement_analysis = item.movement_examination;
-
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              View Details
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-96 text-sm space-y-2">
-            <div>
-              <strong>Movement Caliber:</strong>{" "}
-              {movement_analysis.movement_caliber || "N/A"}
-            </div>
-            <div>
-              <strong>Movement Engraving Quality:</strong>{" "}
-              {movement_analysis.movement_engraving_quality || "N/A"}
-            </div>
-            <div>
-              <strong>Has Blue Parachrom Hairspring:</strong>{" "}
-              {movement_analysis.has_blue_parachrom_hairspring ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Has Côtes de Genève:</strong>{" "}
-              {movement_analysis.has_cotes_de_geneve ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Has Perlage:</strong>{" "}
-              {movement_analysis.has_perlage ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Has Purple Reversing Wheels:</strong>{" "}
-              {movement_analysis.has_purple_reversing_wheels ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Movement Other:</strong>{" "}
-              {movement_analysis.movement_other || "N/A"}
-            </div>
-            <div>
-              <strong>Movement Notes:</strong>
-              <br />
-              {movement_analysis.movement_notes || "N/A"}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    },
-  },
-  {
-    accessorKey: "performance_and_function_test",
-    header: "Performance & Function Test",
-    cell: ({ row }) => {
-      const item = row.original as any;
-      const performance_analysis = item.performance_and_function_test;
-
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              View Details
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-96 text-sm space-y-2">
-            <div>
-              <strong>Amplitude (°):</strong>{" "}
-              {performance_analysis.amplitude_degrees || "N/A"}
-            </div>
-            <div>
-              <strong>Beat Error (ms):</strong>{" "}
-              {performance_analysis.beat_error_ms || "N/A"}
-            </div>
-            <div>
-              <strong>Chronograph Works:</strong>{" "}
-              {performance_analysis.chronograph_works ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Date Change Works:</strong>{" "}
-              {performance_analysis.date_change_works ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Power Reserve Test Result:</strong>{" "}
-              {performance_analysis.power_reserve_test_result || "N/A"}
-            </div>
-            <div>
-              <strong>Rate (s/day):</strong>{" "}
-              {performance_analysis.rate_seconds_per_day || "N/A"}
-            </div>
-            <div>
-              <strong>Time Setting Works:</strong>{" "}
-              {performance_analysis.time_setting_works ? "Yes" : "No"}
-            </div>
-            <div>
-              <strong>Notes:</strong>
-              <br />
-              {performance_analysis.notes || "N/A"}
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    },
-  },
-  {
-    accessorKey: "final_condition_and_grading",
-    header: "Final Condition & Grading",
-    cell: ({ row }) => {
-      const id = String((row.original as any).id);
-      const details = detailsMap[id];
-      const isLoading = loadingMap[id];
-    },
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => {
-      const id = String((row.original as any).id);
-      return (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleView(id)}
-            aria-label="View"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(id)}
-            aria-label="Edit"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-
-          <DeleteConfirmationDialog
-            id={id}
-            fetchData={fetchData}
-            label={<Trash className="w-4 h-4" />}
-            confirmTitle="Delete this Watch Authentication"
-            confirmDescription="This Watch Authentication will be permanently removed from your database."
-          />
-        </div>
-      );
-    },
-  },
-];
-
-export default function AuthenticationsPage() {
+export default function EditAuthenticationPage() {
   const { user } = useAuth();
   const router = useRouter();
+
   const [authentications, setAuthentications] = useState<WatchAuthentication[]>(
     []
   );
@@ -510,205 +68,623 @@ export default function AuthenticationsPage() {
       const json = await res.json();
       const authenticatedWatches = json.data;
 
-      const mapped: WatchAuthentication[] = authenticatedWatches.map(
-        (u: any) => {
-          return {
-            id: u.id,
-            user_information: u.id,
-            provenance_documentation_audit: u.documents,
-            serial_and_model_number_cross_reference: u.serial_info,
-            case_bezel_and_crystal_analysis: u.case_analysis,
-            dial_hands_and_date_scrutiny: u.dial_analysis,
-            bracelet_strap_and_clasp_inspection: u.bracelet_analysis,
-            movement_examination: u.movement_analysis,
-            performance_and_function_test: u.performance_test,
-            final_condition_and_grading: u.final_summary,
-          };
-        }
-      );
+  const params = useParams();
+  const [tabValue, setTabValue] = useState("step1");
 
-      setAuthentications(mapped);
-      localStorage.setItem("authentications", JSON.stringify(mapped));
-    } catch (e) {
-      console.error("Fetch error:", e);
-    }
-  };
-
-  useEffect(() => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    fetchData();
-  }, [user, router]);
-  if (!user) return null;
-
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
-  const [globalFilter, setGlobalFilter] = useState<string>("");
-
-  useEffect(() => {
-    setGlobalFilter(debouncedSearch);
-  }, [debouncedSearch]);
-
-  const handleView = (id: string) => {
-    // placeholder: open detail modal or navigate
-    console.log("View", id);
-  };
-  const handleEdit = (id: string) => {
-    router.push(`/authentications/edit/${id}`);
-  };
-
-  const columnsDef = useMemo(
-    () =>
-      getColumns(
-        detailsMap,
-        loadingMap,
-        handleView,
-        handleEdit,
-        fetchData // ← add this
-      ),
-    [
-      fetchUserDetails,
-      fetchProvenanceDocumentationAudit,
-      detailsMap,
-      loadingMap,
-      authentications,
-    ]
-  );
-
-  const table = useReactTable({
-    data: authentications,
-    columns: columnsDef,
-
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-      globalFilter,
+  const form = useForm({
+    defaultValues: {
+      warranty_card: [],
+      purchase_receipts: [],
+      service_records: [],
+      authorized_dealer: null,
+      warranty_card_notes: "",
+      service_history_notes: "",
     },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
   });
+
+
+  const form2 = useForm({
+    defaultValues: {
+      serial_number: "",
+      model_number: "",
+      serial_found_location: "",
+      matches_documents: "",
+      engraving_quality: "",
+      serial_notes: "",
+    },
+  });
+
+  const onSubmitStep1 = (data: any) => {
+    console.log("Step 1 data:", data);
+    // Handle form submission
+    setTabValue("step2"); // Move to next step
+  };
+
+  const onSubmitStep2 = (data: any) => {
+    console.log("Step 2 data:", data);
+    // Handle form submission
+    setTabValue("step3"); // Move to next step
+  };
+
+  const onBackStep2 = () => {
+    setTabValue("step1"); // Go back to step 1
+  };
+
+  const onBack = () => {
+    // Handle back navigation
+  };
+
+  const tabLabels = [
+    "Step 1: Provenance & Documentation Audit",
+    "Step 2: Serial & Model Number Cross-Reference",
+    "Step 3: Case, Bezel, and Crystal Analysis",
+    "Step 4: Dial, Hands, and Date Scrutiny",
+    "Step 5: Bracelet/Strap and Clasp Inspection",
+    "Step 6: Movement Examination",
+    "Step 7: Performance & Function Test",
+    "Step 8: Final Condition & Grading",
+  ];
+
+  const shortTabLabels = [
+    "Provenance",
+    "Serial & Model",
+    "Case & Crystal",
+    "Dial & Hands",
+    "Bracelet & Clasp",
+    "Movement",
+    "Performance",
+    "Final Grading",
+  ];
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">
-            Authentication List
-          </h2>
-          <p className="text-muted-foreground">
-            Manage your watch authentication records
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap items-center">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-2">Edit Authentication</h1>
+        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
           <div>
-            <Input
-              placeholder="Search authentications..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search"
-            />
+            <Label className="text-sm font-medium text-muted-foreground">
+              Authentication ID
+            </Label>
+            <p className="text-lg font-mono font-semibold">
+              {params.id || "AUTH-2024-001234"}
+            </p>
           </div>
-          <Button asChild>
-            <Link href="/authentications/intro" className="flex items-center">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Authentication
-            </Link>
-          </Button>
+          <div className="h-8 border-l border-border"></div>
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground">
+              Status
+            </Label>
+            <p className="text-sm font-medium text-amber-600">In Progress</p>
+          </div>
+          <div className="h-8 border-l border-border"></div>
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground">
+              Last Updated
+            </Label>
+            <p className="text-sm">{new Date().toLocaleDateString()}</p>
+          </div>
         </div>
       </div>
+      <div className="flex gap-6">
+        <Tabs value={tabValue} onValueChange={setTabValue} className="w-full">
+          {/* Tabs List - Now horizontal */}
+          <TabsList className="grid w-full grid-cols-8 mb-6">
+            <TabsTrigger value="step1" className="text-xs px-2">
+              {shortTabLabels[0]}
+            </TabsTrigger>
+            <TabsTrigger value="step2" className="text-xs px-2">
+              {shortTabLabels[1]}
+            </TabsTrigger>
+            <TabsTrigger value="step3" className="text-xs px-2">
+              {shortTabLabels[2]}
+            </TabsTrigger>
+            <TabsTrigger value="step4" className="text-xs px-2">
+              {shortTabLabels[3]}
+            </TabsTrigger>
+            <TabsTrigger value="step5" className="text-xs px-2">
+              {shortTabLabels[4]}
+            </TabsTrigger>
+            <TabsTrigger value="step6" className="text-xs px-2">
+              {shortTabLabels[5]}
+            </TabsTrigger>
+            <TabsTrigger value="step7" className="text-xs px-2">
+              {shortTabLabels[6]}
+            </TabsTrigger>
+            <TabsTrigger value="step8" className="text-xs px-2">
+              {shortTabLabels[7]}
+            </TabsTrigger>
+          </TabsList>
 
-      {/* TABLE */}
-      <div className="w-full mt-4">
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
+          {/* Tabs Content */}
+          <TabsContent value="step1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Provenance & Documentation Audit</CardTitle>
+                <CardDescription>
+                  Upload and verify the provenance documentation of the watch.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmitStep1)}
+                    className="grid gap-y-4"
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columnsDef.length}
-                    className="h-24 text-center"
+                    <FormField
+                      name="warranty_card"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Upload warranty card *</FormLabel>
+                          <FormControl>
+                            <FileInput
+                              value={field.value}
+                              onChange={(newFiles: File[]) =>
+                                field.onChange(newFiles)
+                              }
+                              accept="image/*,.pdf"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="purchase_receipts"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Upload purchase receipts *</FormLabel>
+                          <FormControl>
+                            <FileInput
+                              value={field.value}
+                              onChange={(newFiles: File[]) =>
+                                field.onChange(newFiles)
+                              }
+                              accept="image/*,.pdf"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="service_records"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Upload service records</FormLabel>
+                          <FormControl>
+                            <FileInput
+                              value={field.value}
+                              onChange={(newFiles: File[]) =>
+                                field.onChange(newFiles)
+                              }
+                              accept="image/*,.pdf"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="authorized_dealer"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2 rounded-md border p-4">
+                          <FormLabel>
+                            Is the dealer an authorized dealer? *
+                          </FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={(value) =>
+                                field.onChange(value === "true")
+                              }
+                              value={field.value === true ? "true" : "false"}
+                            >
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="true" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  Yes
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="false" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  No
+                                </FormLabel>
+                              </FormItem>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="warranty_card_notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Notes on warranty card (font, NFC check, etc.) *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              rows={5}
+                              className="resize-none"
+                              placeholder="Please provide detailed notes about the warranty card..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="service_history_notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Notes on service history (replacement parts,
+                            authorized center?)
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              rows={5}
+                              className="resize-none"
+                              placeholder="Optional: Add notes about service history..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-between">
+                      <Button
+                        type="button"
+                        className="font-medium"
+                        size="sm"
+                        onClick={onBack}
+                        disabled={true}
+                      >
+                        Back
+                      </Button>
+                      <Button type="submit" size="sm" className="font-medium">
+                        Save & Next
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Serial & Model Number Cross-Reference</CardTitle>
+                <CardDescription>
+                  Verify and cross-reference the serial and model numbers.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Form {...form2}>
+                  <form
+                    onSubmit={form2.handleSubmit(onSubmitStep2)}
+                    className="grid gap-y-4"
                   >
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <p className="text-muted-foreground mt-4 text-center text-sm">
-          Default data table
-        </p>
+                    <FormField
+                      name="serial_number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Serial Number *</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              autoComplete="off"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="model_number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Model Number *</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              autoComplete="off"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="serial_found_location"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2 rounded-md">
+                          <FormLabel>Where was the serial found?</FormLabel>
+                          <FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Between lugs">
+                                  Between lugs
+                                </SelectItem>
+                                <SelectItem value="Rehaut">Rehaut</SelectItem>
+                                <SelectItem value="Caseback">
+                                  Caseback
+                                </SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="matches_documents"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2 rounded-md border p-4">
+                          <FormLabel>Match with documents? *</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                            >
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="yes" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  Yes
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="no" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  No
+                                </FormLabel>
+                              </FormItem>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="engraving_quality"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2">
+                          <FormLabel>Engraving Quality</FormLabel>
+                          <FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select quality" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Sharp">Sharp</SelectItem>
+                                <SelectItem value="Shallow">Shallow</SelectItem>
+                                <SelectItem value="Acid-etched">
+                                  Acid-etched
+                                </SelectItem>
+                                <SelectItem value="Dotty">Dotty</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="serial_notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes *</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              value={field.value ?? ""}
+                              rows={5}
+                              className="resize-none"
+                              placeholder="Please provide notes about the serial number..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-between">
+                      <Button
+                        type="button"
+                        className="font-medium"
+                        size="sm"
+                        onClick={onBackStep2}
+                      >
+                        Back
+                      </Button>
+                      <Button type="submit" size="sm" className="font-medium">
+                        Save & Next
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Case, Bezel, and Crystal Analysis</CardTitle>
+                <CardDescription>
+                  Enter case, bezel, and crystal analysis information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="caseMaterial">Case Material</Label>
+                  <Input id="caseMaterial" placeholder="Enter case material" />
+                </div>
+                <div>
+                  <Label htmlFor="crystalType">Crystal Type</Label>
+                  <Input id="crystalType" placeholder="Enter crystal type" />
+                </div>
+                <Button>Save Step 3</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dial, Hands, and Date Scrutiny</CardTitle>
+                <CardDescription>
+                  Enter dial, hands, and date scrutiny information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="dialColor">Dial Color</Label>
+                  <Input id="dialColor" placeholder="Enter dial color" />
+                </div>
+                <div>
+                  <Label htmlFor="handsStyle">Hands Style</Label>
+                  <Input id="handsStyle" placeholder="Enter hands style" />
+                </div>
+                <Button>Save Step 4</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step5">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bracelet/Strap and Clasp Inspection</CardTitle>
+                <CardDescription>
+                  Enter bracelet/strap and clasp inspection information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="braceletType">Bracelet/Strap Type</Label>
+                  <Input
+                    id="braceletType"
+                    placeholder="Enter bracelet/strap type"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="claspType">Clasp Type</Label>
+                  <Input id="claspType" placeholder="Enter clasp type" />
+                </div>
+                <Button>Save Step 5</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Movement Examination</CardTitle>
+                <CardDescription>
+                  Enter movement examination information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="movementType">Movement Type</Label>
+                  <Input id="movementType" placeholder="Enter movement type" />
+                </div>
+                <div>
+                  <Label htmlFor="caliber">Caliber</Label>
+                  <Input id="caliber" placeholder="Enter caliber" />
+                </div>
+                <Button>Save Step 6</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step7">
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance & Function Test</CardTitle>
+                <CardDescription>
+                  Enter performance and function test information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="timingAccuracy">Timing Accuracy</Label>
+                  <Input
+                    id="timingAccuracy"
+                    placeholder="Enter timing accuracy"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="powerReserve">Power Reserve</Label>
+                  <Input id="powerReserve" placeholder="Enter power reserve" />
+                </div>
+                <Button>Save Step 7</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Final Condition & Grading</CardTitle>
+                <CardDescription>
+                  Enter final condition and grading information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="overallCondition">Overall Condition</Label>
+                  <Input
+                    id="overallCondition"
+                    placeholder="Enter overall condition"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="grade">Grade</Label>
+                  <Input id="grade" placeholder="Enter grade" />
+                </div>
+                <Button>Save Step 8</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {authentications.length === 0 && (
-        <Card className="mt-6">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">
-                No authentications found
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Get started by creating your first watch authentication.
-              </p>
-              <Button asChild>
-                <Link
-                  href="/authentications/intro"
-                  className="flex items-center"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Authentication
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </DashboardLayout>
   );
 }

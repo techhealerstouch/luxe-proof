@@ -1,8 +1,6 @@
 "use client";
 
-import type React from "react";
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/dashboard-layout";
@@ -10,457 +8,651 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { FileInput } from "@/components/ui/file-input";
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/searchable-select";
-import {
-  DUMMY_WATCHES,
-  type Watch,
-  type WatchAuthentication,
-} from "@/components/watch-data";
-import Image from "next/image";
+import { useForm } from "react-hook-form";
 
 export default function EditAuthenticationPage() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const [authentication, setAuthentication] =
-    useState<WatchAuthentication | null>(null);
-  const [selectedWatch, setSelectedWatch] = useState<Watch | null>(null);
-  const [formData, setFormData] = useState({
-    productVerification: "",
-    waterResistantTest: "",
-    timegraphTest: "",
-    description: "",
-    verificationImages: ["", "", "", ""],
-    accessoryImages: [""],
+  const [tabValue, setTabValue] = useState("step1");
+
+  const form = useForm({
+    defaultValues: {
+      warranty_card: [],
+      purchase_receipts: [],
+      service_records: [],
+      authorized_dealer: null,
+      warranty_card_notes: "",
+      service_history_notes: "",
+    },
   });
 
-  useEffect(() => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+  const form2 = useForm({
+    defaultValues: {
+      serial_number: "",
+      model_number: "",
+      serial_found_location: "",
+      matches_documents: "",
+      engraving_quality: "",
+      serial_notes: "",
+    },
+  });
 
-    // Load authentication data
-    const stored = localStorage.getItem("authentications");
-    if (stored) {
-      const authentications: WatchAuthentication[] = JSON.parse(stored);
-      const auth = authentications.find((a) => a.id === params.id);
-      if (auth) {
-        setAuthentication(auth);
-        setSelectedWatch(auth.watch);
-        setFormData({
-          productVerification: auth.productVerification,
-          waterResistantTest: auth.waterResistantTest,
-          timegraphTest: auth.timegraphTest,
-          description: auth.description,
-          verificationImages: [
-            ...auth.verificationImages,
-            "",
-            "",
-            "",
-            "",
-          ].slice(0, 4),
-          accessoryImages: [...auth.accessoryImages, ""].slice(0, 1),
-        });
-      } else {
-        router.push("/authentications");
-      }
-    }
-  }, [user, router, params.id]);
-
-  const handleWatchSelect = (watchId: string) => {
-    const watch = DUMMY_WATCHES.find((w) => w.id === watchId);
-    setSelectedWatch(watch || null);
+  const onSubmitStep1 = (data: any) => {
+    console.log("Step 1 data:", data);
+    // Handle form submission
+    setTabValue("step2"); // Move to next step
   };
 
-  const handleImageUpload = (
-    type: "verification" | "accessory",
-    index: number,
-    file: File
-  ) => {
-    const imageUrl = URL.createObjectURL(file);
-
-    if (type === "verification") {
-      const newImages = [...formData.verificationImages];
-      newImages[index] = imageUrl;
-      setFormData((prev) => ({ ...prev, verificationImages: newImages }));
-    } else {
-      const newImages = [...formData.accessoryImages];
-      newImages[index] = imageUrl;
-      setFormData((prev) => ({ ...prev, accessoryImages: newImages }));
-    }
+  const onSubmitStep2 = (data: any) => {
+    console.log("Step 2 data:", data);
+    // Handle form submission
+    setTabValue("step3"); // Move to next step
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedWatch || !authentication) {
-      alert("Missing required data");
-      return;
-    }
-
-    const updatedAuthentication: WatchAuthentication = {
-      ...authentication,
-      watchId: selectedWatch.id,
-      watch: selectedWatch,
-      productVerification: formData.productVerification as any,
-      waterResistantTest: formData.waterResistantTest as any,
-      timegraphTest: formData.timegraphTest as any,
-      description: formData.description,
-      verificationImages: formData.verificationImages.filter(
-        (img) => img !== ""
-      ),
-      accessoryImages: formData.accessoryImages.filter((img) => img !== ""),
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Update in localStorage
-    const stored = localStorage.getItem("authentications");
-    if (stored) {
-      const authentications: WatchAuthentication[] = JSON.parse(stored);
-      const index = authentications.findIndex(
-        (a) => a.id === authentication.id
-      );
-      if (index !== -1) {
-        authentications[index] = updatedAuthentication;
-        localStorage.setItem(
-          "authentications",
-          JSON.stringify(authentications)
-        );
-      }
-    }
-
-    router.push("/authentications");
+  const onBackStep2 = () => {
+    setTabValue("step1"); // Go back to step 1
   };
 
-  // Prepare watch options for searchable select
-  const watchOptions = DUMMY_WATCHES.map((watch) => ({
-    value: watch.id,
-    label: `${watch.brand} ${watch.name} - ${watch.model}`,
-    searchTerms:
-      `${watch.brand} ${watch.name} ${watch.model} ${watch.referenceNumber} ${watch.serialNumber}`.toLowerCase(),
-  }));
+  const onBack = () => {
+    // Handle back navigation
+  };
 
-  if (!user || !authentication) return null;
+  const tabLabels = [
+    "Step 1: Provenance & Documentation Audit",
+    "Step 2: Serial & Model Number Cross-Reference",
+    "Step 3: Case, Bezel, and Crystal Analysis",
+    "Step 4: Dial, Hands, and Date Scrutiny",
+    "Step 5: Bracelet/Strap and Clasp Inspection",
+    "Step 6: Movement Examination",
+    "Step 7: Performance & Function Test",
+    "Step 8: Final Condition & Grading",
+  ];
+
+  const shortTabLabels = [
+    "Provenance",
+    "Serial & Model",
+    "Case & Crystal",
+    "Dial & Hands",
+    "Bracelet & Clasp",
+    "Movement",
+    "Performance",
+    "Final Grading",
+  ];
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold tracking-tight">
-            Edit Watch Authentication
-          </h2>
-          <p className="text-muted-foreground">
-            Update the watch authentication record
-          </p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-2">Edit Authentication</h1>
+        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground">
+              Authentication ID
+            </Label>
+            <p className="text-lg font-mono font-semibold">
+              {params.id || "AUTH-2024-001234"}
+            </p>
+          </div>
+          <div className="h-8 border-l border-border"></div>
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground">
+              Status
+            </Label>
+            <p className="text-sm font-medium text-amber-600">In Progress</p>
+          </div>
+          <div className="h-8 border-l border-border"></div>
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground">
+              Last Updated
+            </Label>
+            <p className="text-sm">{new Date().toLocaleDateString()}</p>
+          </div>
         </div>
+      </div>
+      <div className="flex gap-6">
+        <Tabs value={tabValue} onValueChange={setTabValue} className="w-full">
+          {/* Tabs List - Now horizontal */}
+          <TabsList className="grid w-full grid-cols-8 mb-6">
+            <TabsTrigger value="step1" className="text-xs px-2">
+              {shortTabLabels[0]}
+            </TabsTrigger>
+            <TabsTrigger value="step2" className="text-xs px-2">
+              {shortTabLabels[1]}
+            </TabsTrigger>
+            <TabsTrigger value="step3" className="text-xs px-2">
+              {shortTabLabels[2]}
+            </TabsTrigger>
+            <TabsTrigger value="step4" className="text-xs px-2">
+              {shortTabLabels[3]}
+            </TabsTrigger>
+            <TabsTrigger value="step5" className="text-xs px-2">
+              {shortTabLabels[4]}
+            </TabsTrigger>
+            <TabsTrigger value="step6" className="text-xs px-2">
+              {shortTabLabels[5]}
+            </TabsTrigger>
+            <TabsTrigger value="step7" className="text-xs px-2">
+              {shortTabLabels[6]}
+            </TabsTrigger>
+            <TabsTrigger value="step8" className="text-xs px-2">
+              {shortTabLabels[7]}
+            </TabsTrigger>
+          </TabsList>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Watch Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Watch</CardTitle>
-              <CardDescription>
-                Choose the watch to authenticate
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="watch">Watch</Label>
-                <SearchableSelect
-                  options={watchOptions}
-                  value={selectedWatch?.id}
-                  onValueChange={handleWatchSelect}
-                  placeholder="Search and select a watch..."
-                  searchPlaceholder="Search by brand, model, reference..."
-                  emptyMessage="No watches found."
-                  className="w-full"
-                />
-              </div>
-
-              {/* Watch Details Display */}
-              {selectedWatch && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Watch Details</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-6">
-                      <div className="w-48 h-48 relative rounded-lg overflow-hidden">
-                        <Image
-                          src={selectedWatch.image || "/placeholder.svg"}
-                          alt={`${selectedWatch.brand} ${selectedWatch.name}`}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">
-                              Brand
-                            </Label>
-                            <p className="text-lg font-semibold">
-                              {selectedWatch.brand}
-                            </p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">
-                              Name
-                            </Label>
-                            <p className="text-lg font-semibold">
-                              {selectedWatch.name}
-                            </p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">
-                              Model
-                            </Label>
-                            <p className="text-lg">{selectedWatch.model}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium text-muted-foreground">
-                              Reference Number
-                            </Label>
-                            <p className="text-lg">
-                              {selectedWatch.referenceNumber}
-                            </p>
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-sm font-medium text-muted-foreground">
-                              Serial Number
-                            </Label>
-                            <p className="text-lg">
-                              {selectedWatch.serialNumber}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Test Results */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Results</CardTitle>
-              <CardDescription>Select the status for each test</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="productVerification">
-                    Product Verification
-                  </Label>
-                  <Select
-                    value={formData.productVerification}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        productVerification: value,
-                      }))
-                    }
+          {/* Tabs Content */}
+          <TabsContent value="step1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Provenance & Documentation Audit</CardTitle>
+                <CardDescription>
+                  Upload and verify the provenance documentation of the watch.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmitStep1)}
+                    className="grid gap-y-4"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="servicing">Servicing</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="waterResistantTest">
-                    Water Resistant Test
-                  </Label>
-                  <Select
-                    value={formData.waterResistantTest}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        waterResistantTest: value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="servicing">Servicing</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="timegraphTest">Timegraph Test</Label>
-                  <Select
-                    value={formData.timegraphTest}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, timegraphTest: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="servicing">Servicing</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
-              <CardDescription>
-                Provide detailed information about the watch
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Enter detailed description of the watch condition, history, and any notable features..."
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                rows={4}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Verification Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Verification Images</CardTitle>
-              <CardDescription>
-                Upload up to 4 images for watch verification
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[0, 1, 2, 3].map((index) => (
-                  <div key={index} className="space-y-2">
-                    <Label>Image {index + 1}</Label>
-                    <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                      {formData.verificationImages[index] ? (
-                        <div className="relative w-full h-24">
-                          <Image
-                            src={
-                              formData.verificationImages[index] ||
-                              "/placeholder.svg"
-                            }
-                            alt={`Verification ${index + 1}`}
-                            fill
-                            className="object-cover rounded"
-                          />
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500 py-8">
-                          Click to upload
-                        </div>
+                    <FormField
+                      name="warranty_card"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Upload warranty card *</FormLabel>
+                          <FormControl>
+                            <FileInput
+                              value={field.value}
+                              onChange={(newFiles: File[]) =>
+                                field.onChange(newFiles)
+                              }
+                              accept="image/*,.pdf"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file)
-                            handleImageUpload("verification", index, file);
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                    />
 
-          {/* Accessory Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Accessory Images</CardTitle>
-              <CardDescription>
-                Upload images of boxes, papers, and other peripherals
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label>Accessories Image</Label>
-                <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                  {formData.accessoryImages[0] ? (
-                    <div className="relative w-full h-32">
-                      <Image
-                        src={formData.accessoryImages[0] || "/placeholder.svg"}
-                        alt="Accessories"
-                        fill
-                        className="object-cover rounded"
-                      />
+                    <FormField
+                      name="purchase_receipts"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Upload purchase receipts *</FormLabel>
+                          <FormControl>
+                            <FileInput
+                              value={field.value}
+                              onChange={(newFiles: File[]) =>
+                                field.onChange(newFiles)
+                              }
+                              accept="image/*,.pdf"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="service_records"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Upload service records</FormLabel>
+                          <FormControl>
+                            <FileInput
+                              value={field.value}
+                              onChange={(newFiles: File[]) =>
+                                field.onChange(newFiles)
+                              }
+                              accept="image/*,.pdf"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="authorized_dealer"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2 rounded-md border p-4">
+                          <FormLabel>
+                            Is the dealer an authorized dealer? *
+                          </FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={(value) =>
+                                field.onChange(value === "true")
+                              }
+                              value={field.value === true ? "true" : "false"}
+                            >
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="true" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  Yes
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="false" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  No
+                                </FormLabel>
+                              </FormItem>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="warranty_card_notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Notes on warranty card (font, NFC check, etc.) *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              rows={5}
+                              className="resize-none"
+                              placeholder="Please provide detailed notes about the warranty card..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="service_history_notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Notes on service history (replacement parts,
+                            authorized center?)
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              rows={5}
+                              className="resize-none"
+                              placeholder="Optional: Add notes about service history..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-between">
+                      <Button
+                        type="button"
+                        className="font-medium"
+                        size="sm"
+                        onClick={onBack}
+                        disabled={true}
+                      >
+                        Back
+                      </Button>
+                      <Button type="submit" size="sm" className="font-medium">
+                        Save & Next
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 py-8">
-                      Click to upload accessories image
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Serial & Model Number Cross-Reference</CardTitle>
+                <CardDescription>
+                  Verify and cross-reference the serial and model numbers.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Form {...form2}>
+                  <form
+                    onSubmit={form2.handleSubmit(onSubmitStep2)}
+                    className="grid gap-y-4"
+                  >
+                    <FormField
+                      name="serial_number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Serial Number *</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              autoComplete="off"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="model_number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Model Number *</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              autoComplete="off"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="serial_found_location"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2 rounded-md">
+                          <FormLabel>Where was the serial found?</FormLabel>
+                          <FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Between lugs">
+                                  Between lugs
+                                </SelectItem>
+                                <SelectItem value="Rehaut">Rehaut</SelectItem>
+                                <SelectItem value="Caseback">
+                                  Caseback
+                                </SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="matches_documents"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2 rounded-md border p-4">
+                          <FormLabel>Match with documents? *</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                            >
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="yes" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  Yes
+                                </FormLabel>
+                              </FormItem>
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <RadioGroupItem value="no" />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  No
+                                </FormLabel>
+                              </FormItem>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="engraving_quality"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col space-y-2">
+                          <FormLabel>Engraving Quality</FormLabel>
+                          <FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value ?? ""}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select quality" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Sharp">Sharp</SelectItem>
+                                <SelectItem value="Shallow">Shallow</SelectItem>
+                                <SelectItem value="Acid-etched">
+                                  Acid-etched
+                                </SelectItem>
+                                <SelectItem value="Dotty">Dotty</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      name="serial_notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes *</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              value={field.value ?? ""}
+                              rows={5}
+                              className="resize-none"
+                              placeholder="Please provide notes about the serial number..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-between">
+                      <Button
+                        type="button"
+                        className="font-medium"
+                        size="sm"
+                        onClick={onBackStep2}
+                      >
+                        Back
+                      </Button>
+                      <Button type="submit" size="sm" className="font-medium">
+                        Save & Next
+                      </Button>
                     </div>
-                  )}
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Case, Bezel, and Crystal Analysis</CardTitle>
+                <CardDescription>
+                  Enter case, bezel, and crystal analysis information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="caseMaterial">Case Material</Label>
+                  <Input id="caseMaterial" placeholder="Enter case material" />
+                </div>
+                <div>
+                  <Label htmlFor="crystalType">Crystal Type</Label>
+                  <Input id="crystalType" placeholder="Enter crystal type" />
+                </div>
+                <Button>Save Step 3</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dial, Hands, and Date Scrutiny</CardTitle>
+                <CardDescription>
+                  Enter dial, hands, and date scrutiny information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="dialColor">Dial Color</Label>
+                  <Input id="dialColor" placeholder="Enter dial color" />
+                </div>
+                <div>
+                  <Label htmlFor="handsStyle">Hands Style</Label>
+                  <Input id="handsStyle" placeholder="Enter hands style" />
+                </div>
+                <Button>Save Step 4</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step5">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bracelet/Strap and Clasp Inspection</CardTitle>
+                <CardDescription>
+                  Enter bracelet/strap and clasp inspection information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="braceletType">Bracelet/Strap Type</Label>
                   <Input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload("accessory", 0, file);
-                    }}
+                    id="braceletType"
+                    placeholder="Enter bracelet/strap type"
                   />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <Label htmlFor="claspType">Clasp Type</Label>
+                  <Input id="claspType" placeholder="Enter clasp type" />
+                </div>
+                <Button>Save Step 5</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/authentications")}
-            >
-              Cancel
-            </Button>
-            <Button type="submit">Update Authentication</Button>
-          </div>
-        </form>
+          <TabsContent value="step6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Movement Examination</CardTitle>
+                <CardDescription>
+                  Enter movement examination information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="movementType">Movement Type</Label>
+                  <Input id="movementType" placeholder="Enter movement type" />
+                </div>
+                <div>
+                  <Label htmlFor="caliber">Caliber</Label>
+                  <Input id="caliber" placeholder="Enter caliber" />
+                </div>
+                <Button>Save Step 6</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step7">
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance & Function Test</CardTitle>
+                <CardDescription>
+                  Enter performance and function test information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="timingAccuracy">Timing Accuracy</Label>
+                  <Input
+                    id="timingAccuracy"
+                    placeholder="Enter timing accuracy"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="powerReserve">Power Reserve</Label>
+                  <Input id="powerReserve" placeholder="Enter power reserve" />
+                </div>
+                <Button>Save Step 7</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="step8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Final Condition & Grading</CardTitle>
+                <CardDescription>
+                  Enter final condition and grading information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="overallCondition">Overall Condition</Label>
+                  <Input
+                    id="overallCondition"
+                    placeholder="Enter overall condition"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="grade">Grade</Label>
+                  <Input id="grade" placeholder="Enter grade" />
+                </div>
+                <Button>Save Step 8</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

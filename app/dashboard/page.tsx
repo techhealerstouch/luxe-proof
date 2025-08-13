@@ -60,14 +60,14 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-  }, [user, router]);
+  // useEffect(() => {
+  //   if (!user) {
+  //     router.push("/login");
+  //     return;
+  //   }
+  // }, [user, router]);
 
-  if (!user) return null;
+  // if (!user) return null;
 
   const totalAuthentications = 2;
   const availableCount = 2;
