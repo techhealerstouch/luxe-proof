@@ -114,7 +114,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <h1 className="text-2xl font-bold text-purple-600">Luxe Suite</h1>
+            <h1 className="text-2xl font-bold text-dark-600">Luxe Proof</h1>
           </div>
           <CardTitle>Welcome back</CardTitle>
           <CardDescription>Login using your Luxe Suite account</CardDescription>

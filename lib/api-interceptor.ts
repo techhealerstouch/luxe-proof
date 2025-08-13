@@ -1,61 +1,103 @@
 // API interceptor for handling authentication tokens with HTTP-only cookie for refresh token
 class ApiInterceptor {
-  private baseUrl: string
-  private isRefreshing = false
-  private refreshPromise: Promise<string> | null = null
+  private baseUrl: string;
+  private isRefreshing = false;
+  private refreshPromise: Promise<string> | null = null;
+  private lastRefreshAttempt = 0;
 
   constructor(baseUrl = "/api") {
-    this.baseUrl = baseUrl
+    this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Helper to mark login time & token expiry when we get a new token
+   */
+  setAccessToken(token: string, expiresIn?: number) {
+    localStorage.setItem("accessToken", token);
+
+    if (expiresIn) {
+      // Store the absolute expiry time in ms
+      const expiryTime = Date.now() + expiresIn * 1000;
+      localStorage.setItem("tokenExpiry", String(expiryTime));
+    }
+  }
+
+  /**
+   * Check if token is expired or close to expiry (within 60s)
+   */
+  private isTokenExpired(): boolean {
+    const expiry = Number(localStorage.getItem("tokenExpiry") || 0);
+    if (!expiry) return false; // No expiry info means we don't force refresh
+    return Date.now() >= expiry - 60_000;
   }
 
   async request(endpoint: string, options: RequestInit = {}) {
-    const url = `${this.baseUrl}${endpoint}`
+    const url = `${this.baseUrl}${endpoint}`;
 
     // Add authorization header if token exists
-    const token = localStorage.getItem("accessToken")
+    let token = localStorage.getItem("accessToken");
     const headers = {
       "Content-Type": "application/json",
       ...options.headers,
       ...(token && { Authorization: `Bearer ${token}` }),
-    }
+    };
 
-    // Always include credentials to send cookies
     const requestOptions: RequestInit = {
       ...options,
       headers,
-      credentials: "include",
-    }
+      credentials: "include", // Always include cookies
+    };
 
     try {
-      const response = await fetch(url, requestOptions)
+      // If token is expired or about to expire, refresh it before making the request
+      if (this.isTokenExpired() && !this.isRefreshing) {
+        this.isRefreshing = true;
+        this.refreshPromise = this.refreshToken();
+        token = await this.refreshPromise;
+        this.isRefreshing = false;
+        this.refreshPromise = null;
 
-      // Handle token refresh on 401
+        if (token) {
+          localStorage.setItem("accessToken", token);
+          requestOptions.headers = {
+            ...requestOptions.headers,
+            Authorization: `Bearer ${token}`,
+          };
+        }
+      } else if (this.isRefreshing && this.refreshPromise) {
+        // Wait if another refresh is already happening
+        token = await this.refreshPromise;
+        if (token) {
+          requestOptions.headers = {
+            ...requestOptions.headers,
+            Authorization: `Bearer ${token}`,
+          };
+        }
+      }
+
+      const response = await fetch(url, requestOptions);
+
+      // Handle 401 (e.g., token expired unexpectedly)
       if (response.status === 401) {
-        // Try to refresh the token
         try {
-          // Use a single refresh promise to prevent multiple refresh requests
           if (!this.isRefreshing) {
-            this.isRefreshing = true
-            this.refreshPromise = this.refreshToken()
+            this.isRefreshing = true;
+            this.refreshPromise = this.refreshToken();
           }
 
-          // Wait for the refresh to complete
-          const newToken = await this.refreshPromise
+          const newToken = await this.refreshPromise;
+          this.isRefreshing = false;
+          this.refreshPromise = null;
 
-          // Update the access token
-          localStorage.setItem("accessToken", newToken)
-
-          // Reset refresh state
-          this.isRefreshing = false
-          this.refreshPromise = null
-
-          // Retry original request with new token
-          return this.request(endpoint, options)
+          if (newToken) {
+            localStorage.setItem("accessToken", newToken);
+            return this.request(endpoint, options); // Retry original request
+          }
         } catch (refreshError) {
-          // Refresh failed, redirect to login
-          localStorage.removeItem("accessToken")
-          window.location.href = "/login"
-          throw refreshError
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("tokenExpiry");
+          window.location.href = "/login";
+          throw refreshError;
         }
       }
 
@@ -69,49 +111,46 @@ class ApiInterceptor {
           // Not JSON, ignore parse error
         }
 
-        // Use the API's error message if available, fallback to generic
-        const errorMessage = errorData?.message || `HTTP error! status: ${response.status}`
-
-
-
-        const error: any = new Error(errorMessage);
+        const error: any = new Error(
+          errorData?.message || `HTTP error! status: ${response.status}`
+        );
         error.status = response.status;
         error.data = errorData;
         throw error;
       }
 
-      return response.json()
+      return response.json();
     } catch (error) {
-      console.error("API request failed:", error)
-      throw error
+      console.error("API request failed:", error);
+      throw error;
     }
   }
 
-private lastRefreshAttempt = 0;
+  private async refreshToken(): Promise<string> {
+    const now = Date.now();
 
-private async refreshToken(): Promise<string> {
-  const now = Date.now();
-  if (now - this.lastRefreshAttempt < 1000) {
-    // If last refresh was less than 1s ago, avoid retrying immediately
-    throw new Error("Refresh cooldown active");
+    // Avoid spam-refreshing within 1 second
+    if (now - this.lastRefreshAttempt < 1000) {
+      return localStorage.getItem("accessToken") || "";
+    }
+    this.lastRefreshAttempt = now;
+
+    try {
+      const { access_token, expires_in } =
+        await authService.refreshAccessToken();
+
+      // Save both token and expiry
+      this.setAccessToken(access_token, expires_in);
+      return access_token;
+    } catch (error) {
+      console.error("Refresh failed:", error);
+      throw error;
+    }
   }
-  this.lastRefreshAttempt = now;
-
-
-  try {
-    const newToken = await authService.refreshAccessToken();
-
-    return newToken;
-  } catch (error) {
-    console.error("Refresh failed:", error);
-    throw error;
-  }
-}
-
 
   // Convenience methods
   get(endpoint: string, options?: RequestInit) {
-    return this.request(endpoint, { ...options, method: "GET" })
+    return this.request(endpoint, { ...options, method: "GET" });
   }
 
   post(endpoint: string, data?: any, options?: RequestInit) {
@@ -119,7 +158,7 @@ private async refreshToken(): Promise<string> {
       ...options,
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
-    })
+    });
   }
 
   put(endpoint: string, data?: any, options?: RequestInit) {
@@ -127,14 +166,14 @@ private async refreshToken(): Promise<string> {
       ...options,
       method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
-    })
+    });
   }
 
   delete(endpoint: string, options?: RequestInit) {
-    return this.request(endpoint, { ...options, method: "DELETE" })
+    return this.request(endpoint, { ...options, method: "DELETE" });
   }
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-import { authService } from "./auth-service"
-export const apiClient = new ApiInterceptor(BASE_URL)
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+import { authService } from "./auth-service";
+export const apiClient = new ApiInterceptor(BASE_URL);
