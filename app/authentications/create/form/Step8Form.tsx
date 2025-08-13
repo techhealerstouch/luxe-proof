@@ -177,13 +177,6 @@ export function Step8Form({ form, onSubmit, onBack, step }: Step8FormProps) {
             </FormItem>
           )}
         />
-
-        <div className="flex justify-between">
-          <Button type="button" variant="secondary" onClick={onBack}>
-            Back
-          </Button>
-          <Button type="submit">Submit</Button>
-        </div>
       </form>
     </Form>
   );

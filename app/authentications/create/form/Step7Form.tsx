@@ -248,14 +248,6 @@ export function Step7Form({ form, onSubmit, onBack }: Step7FormProps) {
             </FormItem>
           )}
         />
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between pt-4">
-          <Button type="button" variant="secondary" onClick={onBack}>
-            Back
-          </Button>
-          <Button type="submit">Next</Button>
-        </div>
       </form>
     </Form>
   );

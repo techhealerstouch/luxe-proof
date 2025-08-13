@@ -297,10 +297,6 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-
-        <Button type="submit" className="font-medium" size="sm">
-          Continue to Step 1
-        </Button>
       </form>
     </Form>
   );
