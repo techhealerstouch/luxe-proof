@@ -16,7 +16,7 @@ const api = axios.create({
 const createAuthenticatedWatch = async (data) => {
   try {
     console.log(data);
-    const authToken = sessionStorage.getItem("auth_token");
+    const authToken = localStorage.getItem("accessToken");
 
     const response = await api.post("/auth-products", data, {
       headers: {

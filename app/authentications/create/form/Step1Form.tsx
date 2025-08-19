@@ -87,7 +87,13 @@ export function Step1Form({ form, onSubmit, onBack, step }: Step1FormProps) {
               <FormControl>
                 <RadioGroup
                   onValueChange={(value) => field.onChange(value === "true")}
-                  value={field.value === true ? "true" : "false"}
+                  value={
+                    field.value === true
+                      ? "true"
+                      : field.value === false
+                      ? "false"
+                      : ""
+                  }
                 >
                   <FormItem className="flex items-center space-x-2">
                     <FormControl>

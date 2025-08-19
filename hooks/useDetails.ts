@@ -29,7 +29,7 @@ export const useUserDetails = () => {
       setLoadingMap((m) => ({ ...m, [id]: true }));
       try {
         const res = await fetch(
-          `hhttp://localhost:8000/api/auth-products/${id}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth-products/${id}`
         );
         if (!res.ok) throw new Error("Failed to fetch user details");
         const user = await res.json();

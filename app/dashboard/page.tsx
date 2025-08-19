@@ -1,9 +1,13 @@
+// ============================================================================
+// app/dashboard/page.tsx - Updated Dashboard Page
+// ============================================================================
 "use client";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard-layout";
+import { AuthLoading } from "@/components/auth-loading";
 import {
   Card,
   CardContent,
@@ -57,17 +61,13 @@ const brandData = [
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // useEffect(() => {
-  //   if (!user) {
-  //     router.push("/login");
-  //     return;
-  //   }
-  // }, [user, router]);
-
-  // if (!user) return null;
+  // Show loading state while checking authentication
+  if (isLoading || !user) {
+    return <AuthLoading />;
+  }
 
   const totalAuthentications = 2;
   const availableCount = 2;
@@ -80,7 +80,8 @@ export default function DashboardPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
-            Overview of your watch authentication business
+            Welcome back, {user.name}! Here's your watch authentication business
+            overview.
           </p>
         </div>
 

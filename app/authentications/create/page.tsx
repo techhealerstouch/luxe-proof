@@ -31,6 +31,7 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Award,
 } from "lucide-react";
 
 import { Step1Form } from "./form/Step1Form";
@@ -57,6 +58,8 @@ import {
 } from "./form/schemas/stepsSchema";
 
 const fullFormSchema = step1Schema
+  .merge(step1Schema)
+  // .merge(UserInformationSchema)
   .merge(step2Schema)
   .merge(step3Schema)
   .merge(step4Schema)
@@ -126,7 +129,7 @@ const tabsData = [
   {
     value: "step-8",
     label: "Final Grade",
-    icon: Badge,
+    icon: Award,
     title: "Final Condition & Grading",
     schema: step8Schema,
   },
