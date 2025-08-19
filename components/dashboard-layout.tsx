@@ -25,7 +25,7 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
@@ -65,6 +65,11 @@ function AppSidebar({
 }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+const router = useRouter()
+    const handleLogout = () => {
+    logout()
+    router.push("/login")
+  }
 
   return (
     <div
@@ -141,7 +146,7 @@ function AppSidebar({
                 Settings
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={logout}>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
             </DropdownMenuItem>

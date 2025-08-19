@@ -11,9 +11,9 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";

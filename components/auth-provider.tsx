@@ -11,7 +11,6 @@ import {
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
-
 // ============================================================================
 // Types & Interfaces
 // ============================================================================
@@ -29,8 +28,6 @@ interface Account {
 }
 
 interface User {
-  id: string;
-  account_id: string;
   name: string;
   email: string;
   role: string;
@@ -476,6 +473,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     authenticatedRequest,
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
