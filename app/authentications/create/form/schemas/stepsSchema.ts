@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const UserInformationSchema = z
   .object({
-    watch_brand: z.enum(["Seiko", "Casio", "Citizen", "Rolex", "Omega"], {
+    brand: z.enum(["Seiko", "Casio", "Citizen", "Rolex", "Omega"], {
       required_error: "Please select a watch brand",
     }),
     user_type: z.enum(["personal", "company"], {
@@ -12,7 +12,7 @@ export const UserInformationSchema = z
     company_name: z.string().optional(),
     abn: z.string().optional(),
     company_address: z.string().optional(),
-    full_name: z.string().min(1, { message: "Full Name is required" }),
+    name: z.string().min(1, { message: "Full Name is required" }),
     email: z.string().email({ message: "Invalid email address" }),
     phone: z.string().optional(),
     contact_method: z.enum(["email", "phone", "whatsapp"], {
@@ -223,18 +223,9 @@ export const step7Schema = z.object({
     .string()
     .min(1, "Power reserve result is required"),
 
-  time_setting_works: z.enum(["yes", "no"], {
-    required_error: "Time setting field is required",
-  }),
-
-  date_change_works: z.enum(["yes", "no"], {
-    required_error: "Date change field is required",
-  }),
-
-  chronograph_works: z.enum(["yes", "no", "na"], {
-    required_error: "Chronograph field is required",
-  }),
-
+  time_setting_works: z.enum(["1", "0"]),
+  date_change_works: z.enum(["1", "0"]),
+  chronograph_works: z.enum(["yes", "no", "n/a", ""]), // Updated to "yes", "no", "n/a", and "" for initial state
   performance_notes: z.string().optional(),
 });
 
@@ -246,27 +237,27 @@ export const step8Schema = z.object({
     }
   ),
 
-  component_grading: z.object({
-    case: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-      required_error: "Please select a grade for the case.",
-    }),
-    bracelet: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-      required_error: "Please select a grade for the bracelet.",
-    }),
-    dial: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-      required_error: "Please select a grade for the dial.",
-    }),
-    bezel: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-      required_error: "Please select a grade for the bezel.",
-    }),
-    crystal: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-      required_error: "Please select a grade for the crystal.",
-    }),
-  }),
+  // component_grading: z.object({
+  //   case: z.enum(["mint", "excellent", "good", "fair", "poor"], {
+  //     required_error: "Please select a grade for the case.",
+  //   }),
+  //   bracelet: z.enum(["mint", "excellent", "good", "fair", "poor"], {
+  //     required_error: "Please select a grade for the bracelet.",
+  //   }),
+  //   dial: z.enum(["mint", "excellent", "good", "fair", "poor"], {
+  //     required_error: "Please select a grade for the dial.",
+  //   }),
+  //   bezel: z.enum(["mint", "excellent", "good", "fair", "poor"], {
+  //     required_error: "Please select a grade for the bezel.",
+  //   }),
+  //   crystal: z.enum(["mint", "excellent", "good", "fair", "poor"], {
+  //     required_error: "Please select a grade for the crystal.",
+  //   }),
+  // }),
 
-  was_polished: z.enum(["yes", "no", "uncertain"], {
-    required_error: "Please indicate if the watch was polished.",
-  }),
+  // was_polished: z.enum(["yes", "no", "uncertain"], {
+  //   required_error: "Please indicate if the watch was polished.",
+  // }),
 
   estimated_production_year: z
     .string()

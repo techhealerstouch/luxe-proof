@@ -19,12 +19,12 @@ import {
 } from "@/components/ui/select";
 import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 type FormValues = {
-  watch_brand: string;
+  brand: string;
   user_type: string;
   company_name: string;
   abn: string;
   company_address: string;
-  full_name: string;
+  name: string;
   email: string;
   phone: string;
   contact_method: string;
@@ -111,9 +111,8 @@ export function UserInformationForm({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-y-4">
-        {/* Watch Brand */}
         <FormField
-          name={"watch_brand" as keyof FormValues}
+          name={"brand" as keyof FormValues}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Watch Brand</FormLabel>
@@ -218,7 +217,7 @@ export function UserInformationForm({
 
         {/* Full Name */}
         <FormField
-          name={"full_name" as keyof FormValues}
+          name={"name" as keyof FormValues}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Full Name *</FormLabel>
@@ -233,7 +232,6 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-
         {/* Email */}
         <FormField
           name={"email" as keyof FormValues}
@@ -306,16 +304,15 @@ export function UserInformationForm({
 export default function Page() {
   const form = useForm<FormValues>({
     defaultValues: {
-      watch_brand: "",
+      brand: "",
       user_type: "",
       company_name: "",
       abn: "",
       company_address: "",
-      full_name: "",
-      email: "dfdfdfdfd",
+      name: "",
+      email: "",
       phone: "",
       contact_method: "",
-
       // Step 2 fields
       serial_number: "",
       model_number: "",

@@ -1,0 +1,386 @@
+// components/watch-details/detail-sections.tsx
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { WatchAuthentication } from "@/types/watch-authentication";
+
+interface DetailItemProps {
+  label: string;
+  value: string | number | boolean | null | undefined;
+  type?: "text" | "boolean" | "number";
+}
+
+const DetailItem: React.FC<DetailItemProps> = ({
+  label,
+  value,
+  type = "text",
+}) => {
+  const formatValue = () => {
+    if (value === null || value === undefined) return "N/A";
+
+    switch (type) {
+      case "boolean":
+        return value ? "Yes" : "No";
+      case "number":
+        return value.toString();
+      default:
+        return value.toString();
+    }
+  };
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p className={type === "number" ? "text-lg font-mono" : ""}>
+        {formatValue()}
+      </p>
+    </div>
+  );
+};
+
+interface DetailSectionProps {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+const DetailSection: React.FC<DetailSectionProps> = ({
+  title,
+  children,
+  className = "",
+}) => (
+  <Card className={className}>
+    <CardHeader>
+      <CardTitle>{title}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="grid grid-cols-2 gap-4">{children}</div>
+    </CardContent>
+  </Card>
+);
+
+interface BasicInfoSectionProps {
+  watchData: WatchAuthentication;
+}
+
+export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
+  watchData,
+}) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center justify-between">
+        <span>{watchData.name}</span>
+        <Badge
+          className={
+            watchData.authenticity_verdict?.toLowerCase() === "authentic" ||
+            watchData.authenticity_verdict?.toLowerCase() === "genuine"
+              ? "bg-green-500 hover:bg-green-600 text-white"
+              : "bg-red-500 hover:bg-red-600 text-white"
+          }
+        >
+          {watchData.authenticity_verdict || "Pending"}
+        </Badge>
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="grid grid-cols-2 gap-4">
+        <DetailItem label="Brand" value={watchData.brand} />
+        <DetailItem
+          label="Production Year"
+          value={watchData.estimated_production_year}
+        />
+        <div className="col-span-2">
+          <DetailItem label="Final Summary" value={watchData.final_summary} />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+export const SerialInfoSection: React.FC<{
+  watchData: WatchAuthentication;
+}> = ({ watchData }) => {
+  const serialInfo = watchData.serial_and_model_number_cross_reference;
+
+  if (!serialInfo) return null;
+
+  return (
+    <DetailSection title="Serial & Model Information">
+      <DetailItem label="Serial Number" value={serialInfo.serial_number} />
+      <DetailItem label="Model Number" value={serialInfo.model_number} />
+      <DetailItem
+        label="Serial Found Location"
+        value={serialInfo.serial_found_location}
+      />
+      <DetailItem
+        label="Matches Documents"
+        value={serialInfo.matches_documents}
+        type="boolean"
+      />
+      <DetailItem
+        label="Engraving Quality"
+        value={serialInfo.engraving_quality}
+      />
+      {serialInfo.notes && (
+        <div className="col-span-2">
+          <DetailItem label="Notes" value={serialInfo.notes} />
+        </div>
+      )}
+    </DetailSection>
+  );
+};
+
+export const CaseAnalysisSection: React.FC<{
+  watchData: WatchAuthentication;
+}> = ({ watchData }) => {
+  const caseAnalysis = watchData.case_bezel_and_crystal_analysis;
+
+  if (!caseAnalysis) return null;
+
+  return (
+    <DetailSection title="Case, Bezel & Crystal Analysis">
+      <DetailItem
+        label="Material Verified"
+        value={caseAnalysis.case_material_verified}
+        type="boolean"
+      />
+      <DetailItem label="Weight & Feel" value={caseAnalysis.case_weight_feel} />
+      <DetailItem
+        label="Finishing Transitions"
+        value={caseAnalysis.finishing_transitions}
+      />
+      <DetailItem label="Bezel Action" value={caseAnalysis.bezel_action} />
+      <DetailItem label="Crystal Type" value={caseAnalysis.crystal_type} />
+      <DetailItem
+        label="Laser Etched Crown"
+        value={caseAnalysis.laser_etched_crown}
+        type="boolean"
+      />
+      <DetailItem
+        label="Crown Logo Sharpness"
+        value={caseAnalysis.crown_logo_sharpness}
+      />
+      {caseAnalysis.notes && (
+        <div className="col-span-2">
+          <DetailItem label="Notes" value={caseAnalysis.notes} />
+        </div>
+      )}
+    </DetailSection>
+  );
+};
+
+export const DialAnalysisSection: React.FC<{
+  watchData: WatchAuthentication;
+}> = ({ watchData }) => {
+  const dialAnalysis = watchData.dial_hands_and_date_scrutiny;
+
+  if (!dialAnalysis) return null;
+
+  return (
+    <DetailSection title="Dial, Hands & Date Scrutiny">
+      <DetailItem label="Text Quality" value={dialAnalysis.dial_text_quality} />
+      <DetailItem
+        label="Lume Application"
+        value={dialAnalysis.lume_application}
+      />
+      <DetailItem
+        label="Cyclops Magnification"
+        value={dialAnalysis.cyclops_magnification}
+      />
+      <DetailItem
+        label="Date Alignment"
+        value={dialAnalysis.date_alignment}
+        type="boolean"
+      />
+      {dialAnalysis.notes && (
+        <div className="col-span-2">
+          <DetailItem label="Notes" value={dialAnalysis.notes} />
+        </div>
+      )}
+    </DetailSection>
+  );
+};
+
+export const BraceletAnalysisSection: React.FC<{
+  watchData: WatchAuthentication;
+}> = ({ watchData }) => {
+  const braceletAnalysis = watchData.bracelet_strap_and_clasp_inspection;
+
+  if (!braceletAnalysis) return null;
+
+  return (
+    <DetailSection title="Bracelet, Strap & Clasp Inspection">
+      <DetailItem
+        label="Link Type"
+        value={braceletAnalysis.bracelet_link_type}
+      />
+      <DetailItem
+        label="Connection Type"
+        value={braceletAnalysis.connection_type}
+      />
+      <DetailItem label="Clasp Action" value={braceletAnalysis.clasp_action} />
+      <DetailItem
+        label="Micro Adjustment"
+        value={braceletAnalysis.micro_adjustment_functioning}
+        type="boolean"
+      />
+      <DetailItem
+        label="Clasp Engravings"
+        value={braceletAnalysis.clasp_engravings}
+      />
+      {braceletAnalysis.notes && (
+        <div className="col-span-2">
+          <DetailItem label="Notes" value={braceletAnalysis.notes} />
+        </div>
+      )}
+    </DetailSection>
+  );
+};
+
+export const MovementAnalysisSection: React.FC<{
+  watchData: WatchAuthentication;
+}> = ({ watchData }) => {
+  const movementAnalysis = watchData.movement_examination;
+
+  if (!movementAnalysis) return null;
+
+  return (
+    <DetailSection title="Movement Examination">
+      <DetailItem label="Caliber" value={movementAnalysis.movement_caliber} />
+      <DetailItem
+        label="Engraving Quality"
+        value={movementAnalysis.movement_engraving_quality}
+      />
+      <DetailItem
+        label="Côtes de Genève"
+        value={movementAnalysis.has_cotes_de_geneve}
+        type="boolean"
+      />
+      <DetailItem
+        label="Perlage"
+        value={movementAnalysis.has_perlage}
+        type="boolean"
+      />
+      <DetailItem
+        label="Purple Reversing Wheels"
+        value={movementAnalysis.has_purple_reversing_wheels}
+        type="boolean"
+      />
+      <DetailItem
+        label="Blue Parachrom Hairspring"
+        value={movementAnalysis.has_blue_parachrom_hairspring}
+        type="boolean"
+      />
+      <DetailItem
+        label="Other Features"
+        value={movementAnalysis.movement_other}
+      />
+      {movementAnalysis.movement_notes && (
+        <div className="col-span-2">
+          <DetailItem label="Notes" value={movementAnalysis.movement_notes} />
+        </div>
+      )}
+    </DetailSection>
+  );
+};
+
+export const PerformanceTestSection: React.FC<{
+  watchData: WatchAuthentication;
+}> = ({ watchData }) => {
+  const performanceTest = watchData.performance_and_function_test;
+
+  if (!performanceTest) return null;
+
+  return (
+    <DetailSection title="Performance & Function Test">
+      <DetailItem
+        label="Rate (seconds/day)"
+        value={performanceTest.rate_seconds_per_day}
+        type="number"
+      />
+      <DetailItem
+        label="Amplitude (degrees)"
+        value={performanceTest.amplitude_degrees}
+        type="number"
+      />
+      <DetailItem
+        label="Beat Error (ms)"
+        value={performanceTest.beat_error_ms}
+        type="number"
+      />
+      <DetailItem
+        label="Power Reserve Test"
+        value={performanceTest.power_reserve_test_result}
+      />
+      <DetailItem
+        label="Time Setting"
+        value={performanceTest.time_setting_works}
+        type="boolean"
+      />
+      <DetailItem
+        label="Date Change"
+        value={performanceTest.date_change_works}
+        type="boolean"
+      />
+      <DetailItem
+        label="Chronograph"
+        value={performanceTest.chronograph_works}
+      />
+      {performanceTest.notes && (
+        <div className="col-span-2">
+          <DetailItem label="Notes" value={performanceTest.notes} />
+        </div>
+      )}
+    </DetailSection>
+  );
+};
+
+export const DocumentationSection: React.FC<{
+  watchData: WatchAuthentication;
+}> = ({ watchData }) => {
+  const documentation = watchData.provenance_documentation_audit;
+
+  if (!documentation) return null;
+
+  return (
+    <DetailSection title="Provenance Documentation Audit">
+      <DetailItem
+        label="Authorized Dealer"
+        value={documentation.is_authorized_dealer}
+        type="boolean"
+      />
+      <DetailItem
+        label="Warranty Card"
+        value={documentation.warranty_card_path ? "Available" : "Not Available"}
+      />
+      <DetailItem
+        label="Purchase Receipt"
+        value={
+          documentation.purchase_receipt_path ? "Available" : "Not Available"
+        }
+      />
+      <DetailItem
+        label="Service Records"
+        value={
+          documentation.service_records_path ? "Available" : "Not Available"
+        }
+      />
+      {documentation.warranty_card_notes && (
+        <div className="col-span-2">
+          <DetailItem
+            label="Warranty Card Notes"
+            value={documentation.warranty_card_notes}
+          />
+        </div>
+      )}
+      {documentation.service_history_notes && (
+        <div className="col-span-2">
+          <DetailItem
+            label="Service History Notes"
+            value={documentation.service_history_notes}
+          />
+        </div>
+      )}
+    </DetailSection>
+  );
+};
