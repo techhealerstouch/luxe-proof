@@ -42,6 +42,8 @@ export function Step2Form({ form, onSubmit, onBack, step }: Step2FormProps) {
               <FormLabel>Serial Number *</FormLabel>
               <FormControl>
                 <Input
+                  readOnly
+                  className="bg-gray-100 text-gray-600 cursor-not-allowed"
                   {...field}
                   value={field.value ?? ""}
                   autoComplete="off"

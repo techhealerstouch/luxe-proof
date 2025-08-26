@@ -23,6 +23,9 @@ import {
   Menu,
   X,
   User,
+  CircleDollarSign,
+  UserRound,
+  Watch,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -34,25 +37,20 @@ const menuItems = [
     url: "/dashboard",
     icon: BarChart3,
   },
+  // {
+  //   title: "User List",
+  //   url: "/users",
+  //   icon: User,
+  // },
   {
-    title: "User List",
-    url: "/users",
-    icon: User,
+    title: "Create Authentication",
+    url: "/authentications/intro",
+    icon: Watch,
   },
   {
     title: "Authentication List",
     url: "/authentications",
     icon: List,
-  },
-  {
-    title: "Create Authentication",
-    url: "/authentications/intro",
-    icon: Plus,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
   },
 ];
 
@@ -65,11 +63,11 @@ function AppSidebar({
 }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-const router = useRouter()
-    const handleLogout = () => {
-    logout()
-    router.push("/login")
-  }
+  const router = useRouter();
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   return (
     <div
@@ -141,9 +139,21 @@ const router = useRouter()
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-56">
             <DropdownMenuItem asChild>
+              <Link href="/profile">
+                <UserRound className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link href="/settings">
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/billing">
+                <CircleDollarSign className="mr-2 h-4 w-4" />
+                Billing
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>

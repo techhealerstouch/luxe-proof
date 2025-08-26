@@ -186,12 +186,12 @@ export default function LoginPage() {
             </CardContent>
 
             <CardFooter className="flex flex-col items-center space-y-4">
-              <p className="text-center text-sm text-gray-600">
+              {/* <p className="text-center text-sm text-gray-600">
                 {"Don't have an account? "}
                 <Link href="/register" className="font-bold text-black">
                   Register
                 </Link>
-              </p>
+              </p> */}
               <p className="text-xs text-gray-500">
                 Need support?{" "}
                 <Link href="/support" className="underline">
