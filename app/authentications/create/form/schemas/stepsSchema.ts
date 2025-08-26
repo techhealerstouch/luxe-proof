@@ -1,50 +1,23 @@
 // schemas/step0Schema.ts
 import { z } from "zod";
-
-export const UserInformationSchema = z
-  .object({
-    brand: z.enum(["Seiko", "Casio", "Citizen", "Rolex", "Omega"], {
-      required_error: "Please select a watch brand",
-    }),
-    user_type: z.enum(["personal", "company"], {
-      required_error: "Please select a user type",
-    }),
-    company_name: z.string().optional(),
-    abn: z.string().optional(),
-    company_address: z.string().optional(),
-    name: z.string().min(1, { message: "Full Name is required" }),
-    email: z.string().email({ message: "Invalid email address" }),
-    phone: z.string().optional(),
-    contact_method: z.enum(["email", "phone", "whatsapp"], {
-      required_error: "Please select a contact method",
-    }),
-  })
-  .superRefine((data, ctx) => {
-    // Conditional validation if user_type is company
-    if (data.user_type === "company") {
-      if (!data.company_name || data.company_name.trim() === "") {
-        ctx.addIssue({
-          path: ["company_name"],
-          code: z.ZodIssueCode.custom,
-          message: "Company name is required",
-        });
-      }
-      if (!data.abn || data.abn.trim() === "") {
-        ctx.addIssue({
-          path: ["abn"],
-          code: z.ZodIssueCode.custom,
-          message: "ABN is required",
-        });
-      }
-      if (!data.company_address || data.company_address.trim() === "") {
-        ctx.addIssue({
-          path: ["company_address"],
-          code: z.ZodIssueCode.custom,
-          message: "Company address is required",
-        });
-      }
-    }
-  });
+// Remove superRefine from UserInformationSchema and make it a regular ZodObject
+export const UserInformationSchema = z.object({
+  brand: z.enum(["Seiko", "Casio", "Citizen", "Rolex", "Omega"], {
+    required_error: "Please select a watch brand",
+  }),
+  user_type: z.enum(["personal", "company"], {
+    required_error: "Please select a user type",
+  }),
+  company_name: z.string().optional(),
+  abn: z.string().optional(),
+  company_address: z.string().optional(),
+  name: z.string().min(1, { message: "Full Name is required" }),
+  email: z.string().email({ message: "Invalid email address" }),
+  phone: z.string().optional(),
+  contact_method: z.enum(["email", "phone", "whatsapp"], {
+    required_error: "Please select a contact method",
+  }),
+});
 export const step1Schema = z.object({
   warranty_card: z
     .array(

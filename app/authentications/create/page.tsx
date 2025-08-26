@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,9 +58,7 @@ import {
   UserInformationSchema,
 } from "./form/schemas/stepsSchema";
 
-const fullFormSchema = step1Schema
-  .merge(step1Schema)
-  // .merge(UserInformationSchema)
+const fullFormSchema = UserInformationSchema.merge(step1Schema)
   .merge(step2Schema)
   .merge(step3Schema)
   .merge(step4Schema)
@@ -136,9 +135,44 @@ const tabsData = [
 ];
 
 export default function CreateAuthenticationPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [validatedSerial, setValidatedSerial] = useState("");
   const [activeTab, setActiveTab] = useState("user-info");
   const [completedTabs, setCompletedTabs] = useState<Set<string>>(new Set());
   const emptySchema = z.object({});
+
+  // Check validation on component mount
+  useEffect(() => {
+    const checkValidation = () => {
+      const storedSerial = localStorage.getItem("validated_serial");
+      const timestamp = localStorage.getItem("serial_validation_timestamp");
+
+      if (!storedSerial || !timestamp) {
+        // No validation found, redirect to intro
+        router.push("/authentications/intro");
+        return;
+      }
+
+      // Check if validation is still recent (30 minutes)
+      const validationTime = parseInt(timestamp);
+      const thirtyMinutes = 30 * 60 * 1000;
+
+      if (Date.now() - validationTime > thirtyMinutes) {
+        // Validation expired, clear storage and redirect
+        localStorage.removeItem("validated_serial");
+        localStorage.removeItem("serial_validation_timestamp");
+        router.push("/authentications/intro");
+        return;
+      }
+
+      // Validation is valid, proceed
+      setValidatedSerial(storedSerial);
+      setIsLoading(false);
+    };
+
+    checkValidation();
+  }, [router]);
 
   // Get the current tab's schema
   const getCurrentSchema = () => {
@@ -149,8 +183,17 @@ export default function CreateAuthenticationPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(getCurrentSchema()),
     mode: "onChange",
-    defaultValues: {},
+    defaultValues: {
+      serial_number: validatedSerial, // Pre-fill with validated serial
+    },
   });
+
+  // Update form default value when validatedSerial is set
+  useEffect(() => {
+    if (validatedSerial) {
+      form.setValue("serial_number", validatedSerial);
+    }
+  }, [validatedSerial, form]);
 
   const {
     handleSubmit,
@@ -209,10 +252,18 @@ export default function CreateAuthenticationPage() {
 
     try {
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
+
+      // Clear validation after successful submission
+      localStorage.removeItem("validated_serial");
+      localStorage.removeItem("serial_validation_timestamp");
+
       toast.success("Watch data submitted successfully");
       setActiveTab("user-info");
       setCompletedTabs(new Set());
       reset();
+
+      // Redirect to success page or back to intro
+      router.push("/authentications/intro");
     } catch (error) {
       toast.error("Failed to submit authenticated watch data");
     }
@@ -256,10 +307,18 @@ export default function CreateAuthenticationPage() {
 
     try {
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
+
+      // Clear validation after successful submission
+      localStorage.removeItem("validated_serial");
+      localStorage.removeItem("serial_validation_timestamp");
+
       toast.success("Watch data submitted successfully");
       setActiveTab("user-info");
       setCompletedTabs(new Set());
       reset();
+
+      // Redirect to success page or back to intro
+      router.push("/authentications/intro");
     } catch (error) {
       toast.error("Failed to submit authenticated watch data");
     }
@@ -276,6 +335,20 @@ export default function CreateAuthenticationPage() {
 
   const isLastTab = getCurrentTabIndex() === tabsData.length - 1;
 
+  // Show loading while checking validation
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p>Verifying authentication...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -284,6 +357,13 @@ export default function CreateAuthenticationPage() {
           <p className="text-muted-foreground mt-2">
             Complete all sections to authenticate your watch
           </p>
+          {validatedSerial && (
+            <div className="mt-2">
+              <Badge variant="outline" className="text-green-600">
+                Serial: {validatedSerial}
+              </Badge>
+            </div>
+          )}
         </div>
 
         <Card className="w-full max-w-6xl mx-auto">
@@ -415,7 +495,7 @@ export default function CreateAuthenticationPage() {
                   <div className="flex justify-between pt-4 border-t">
                     <Button
                       type="button"
-                      onClick={handleButtonNext}
+                      onClick={handleBack}
                       disabled={getCurrentTabIndex() === 0}
                     >
                       <ChevronLeft className="h-4 w-4 mr-2" />
