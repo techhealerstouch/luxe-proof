@@ -22,6 +22,10 @@ import { useAuth } from "@/components/auth-provider";
 import { AuthLoading } from "@/components/auth-loading";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import {
+  apiService
+} from "@/lib/api-service";
+
 
 // PKCE Helpers
 function base64UrlEncode(buffer: Uint8Array) {
@@ -76,6 +80,7 @@ export default function LoginPage() {
       router.push(from);
     }
   }, [user, isLoading, router, searchParams]);
+
 
   const redirectToOAuth = async () => {
     setIsRedirecting(true);
