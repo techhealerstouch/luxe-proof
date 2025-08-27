@@ -19,10 +19,13 @@ export const useAuthenticationData = (): UseAuthenticationDataReturn => {
   const mapApiDataToWatchAuthentication = (
     apiData: any
   ): WatchAuthentication => ({
+    // Basic fields
     id: apiData.id,
     name: apiData.name,
-    user_information: apiData.id,
+    user_information: apiData.user_information || apiData.id,
     brand: apiData.brand,
+    model: apiData.model,
+    serial_number: apiData.serial_number,
     authenticity_verdict: apiData.authenticity_verdict,
     estimated_production_year: apiData.estimated_production_year,
     final_summary: apiData.final_summary,
@@ -30,15 +33,32 @@ export const useAuthenticationData = (): UseAuthenticationDataReturn => {
     created_at: apiData.created_at,
     updated_at: apiData.updated_at,
 
-    // Map nested objects properly
-    provenance_documentation_audit: apiData.documents,
-    serial_and_model_number_cross_reference: apiData.serial_info,
-    case_bezel_and_crystal_analysis: apiData.case_analysis,
-    dial_hands_and_date_scrutiny: apiData.dial_analysis,
-    bracelet_strap_and_clasp_inspection: apiData.bracelet_analysis,
-    movement_examination: apiData.movement_analysis,
-    performance_and_function_test: apiData.performance_test,
-    final_condition_and_grading: apiData.final_summary,
+    // Status-related fields - ADD THESE to match your API response
+    status: apiData.status || "pending",
+    document_sent_at: apiData.document_sent_at,
+    resend_count: apiData.resend_count || 0,
+    last_resent_at: apiData.last_resent_at,
+    void_reason: apiData.void_reason,
+    voided_at: apiData.voided_at,
+    voided_by: apiData.voided_by,
+
+    // Map nested objects using your existing structure
+    provenance_documentation_audit:
+      apiData.provenance_documentation_audit || apiData.documents,
+    serial_and_model_number_cross_reference:
+      apiData.serial_and_model_number_cross_reference || apiData.serial_info,
+    case_bezel_and_crystal_analysis:
+      apiData.case_bezel_and_crystal_analysis || apiData.case_analysis,
+    dial_hands_and_date_scrutiny:
+      apiData.dial_hands_and_date_scrutiny || apiData.dial_analysis,
+    bracelet_strap_and_clasp_inspection:
+      apiData.bracelet_strap_and_clasp_inspection || apiData.bracelet_analysis,
+    movement_examination:
+      apiData.movement_examination || apiData.movement_analysis,
+    performance_and_function_test:
+      apiData.performance_and_function_test || apiData.performance_test,
+    final_condition_and_grading:
+      apiData.final_condition_and_grading || apiData.final_summary,
   });
 
   const fetchData = async (): Promise<void> => {

@@ -35,6 +35,18 @@ export function Step8Form({ form, onSubmit, onBack, step }: Step8FormProps) {
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Hidden Status Field */}
+        <FormField
+          name="status"
+          render={({ field }) => (
+            <FormItem className="hidden">
+              <FormControl>
+                <Input type="hidden" {...field} value="pending" />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
         {/* Authenticity Verdict */}
         <FormField
           name="authenticity_verdict"
@@ -96,6 +108,7 @@ export function Step8Form({ form, onSubmit, onBack, step }: Step8FormProps) {
             );
           }}
         />
+
         {/* Final Summary */}
         <FormField
           name="final_summary"
