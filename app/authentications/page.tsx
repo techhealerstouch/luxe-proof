@@ -34,6 +34,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "@/components/ui/use-toast";
 
 import type {
   ColumnFiltersState,
@@ -85,7 +86,7 @@ function TableSkeleton() {
         <Table>
           <TableHeader>
             <TableRow>
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: 9 }).map((_, i) => (
                 <TableHead key={i}>
                   <Skeleton className="h-4 w-full" />
                 </TableHead>
@@ -95,7 +96,7 @@ function TableSkeleton() {
           <TableBody>
             {Array.from({ length: 10 }).map((_, i) => (
               <TableRow key={i}>
-                {Array.from({ length: 8 }).map((_, j) => (
+                {Array.from({ length: 9 }).map((_, j) => (
                   <TableCell key={j}>
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
@@ -171,11 +172,10 @@ export default function AuthenticationsPage() {
   const [brandFilter, setBrandFilter] = useState<string>("all");
   const [verdictFilter, setVerdictFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all"); // Added status filter
 
   // Table state
-  const [sorting, setSorting] = useState<SortingState>([
-    // Default sort - will be set after we know the available columns
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
@@ -199,7 +199,7 @@ export default function AuthenticationsPage() {
     setGlobalFilter(debouncedSearch);
   }, [debouncedSearch]);
 
-  // Apply filters with improved logic
+  // Apply filters with improved logic - Updated to include status filter
   useEffect(() => {
     const filters: ColumnFiltersState = [];
 
@@ -218,13 +218,17 @@ export default function AuthenticationsPage() {
       });
     }
 
-    setColumnFilters(filters);
-  }, [brandFilter, verdictFilter, yearFilter]);
+    if (statusFilter !== "all") {
+      filters.push({ id: "status", value: statusFilter });
+    }
 
-  // Memoized filter options with better sorting
+    setColumnFilters(filters);
+  }, [brandFilter, verdictFilter, yearFilter, statusFilter]);
+
+  // Memoized filter options with better sorting - Updated to include status options
   const filterOptions = useMemo(() => {
     if (!authentications || authentications.length === 0) {
-      return { brands: [], verdicts: [], years: [] };
+      return { brands: [], verdicts: [], years: [], statuses: [] };
     }
 
     // Extract brands and filter out null/undefined values
@@ -275,7 +279,20 @@ export default function AuthenticationsPage() {
       )
     ).sort((a, b) => b - a); // Sort years descending (newest first)
 
-    return { brands, verdicts, years };
+    // Extract statuses - Added status filtering
+    const statuses = Array.from(
+      new Set(
+        authentications.map((auth) => {
+          // Determine status based on document_sent_at and status field
+          if (auth.status === "voided") return "voided";
+          if (auth.status === "completed") return "completed";
+          if (auth.document_sent_at || auth.status === "sent") return "sent";
+          return "pendings";
+        })
+      )
+    ).sort((a, b) => String(a).localeCompare(String(b)));
+
+    return { brands, verdicts, years, statuses };
   }, [authentications]);
 
   // Event handlers
@@ -293,6 +310,27 @@ export default function AuthenticationsPage() {
   };
 
   const handleEdit = (id: string) => {
+    const watchData = authentications.find(
+      (watch) => String(watch.id) === String(id)
+    );
+
+    if (watchData) {
+      const isDocumentSent =
+        watchData.status === "sent" || watchData.document_sent_at;
+      const isVoided = watchData.status === "voided";
+
+      if (isDocumentSent || isVoided) {
+        toast({
+          title: "Cannot Edit",
+          description: isVoided
+            ? "Cannot edit voided authentication records"
+            : "Cannot edit authentication after document has been sent",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     router.push(`/authentications/edit/${id}`);
   };
 
@@ -313,6 +351,7 @@ export default function AuthenticationsPage() {
     setBrandFilter("all");
     setVerdictFilter("all");
     setYearFilter("all");
+    setStatusFilter("all"); // Clear status filter
     setSearch("");
   };
 
@@ -320,8 +359,8 @@ export default function AuthenticationsPage() {
     setSearch("");
   };
 
-  // Table configuration
-  const columns = useMemo(
+  // Table configuration - Simplified and using the new table columns
+  const tableColumns = useMemo(
     () =>
       createTableColumns({
         handleView,
@@ -333,7 +372,7 @@ export default function AuthenticationsPage() {
 
   const table = useReactTable({
     data: authentications,
-    columns,
+    columns: tableColumns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -352,53 +391,19 @@ export default function AuthenticationsPage() {
     onGlobalFilterChange: setGlobalFilter,
     initialState: {
       pagination: {
-        pageSize: 20,
+        pageSize: 10,
       },
     },
   });
 
-  // Pagination helpers
-  const pageCount = table.getPageCount();
-  const currentPage = table.getState().pagination.pageIndex + 1;
-
-  const getPageNumbers = () => {
-    const delta = 2;
-    const range = [];
-    const rangeWithDots = [];
-
-    if (pageCount <= 1) return [1];
-
-    for (
-      let i = Math.max(2, currentPage - delta);
-      i <= Math.min(pageCount - 1, currentPage + delta);
-      i++
-    ) {
-      range.push(i);
-    }
-
-    if (currentPage - delta > 2) {
-      rangeWithDots.push(1, "...");
-    } else {
-      rangeWithDots.push(1);
-    }
-
-    rangeWithDots.push(...range);
-
-    if (currentPage + delta < pageCount - 1) {
-      rangeWithDots.push("...", pageCount);
-    } else if (pageCount > 1) {
-      rangeWithDots.push(pageCount);
-    }
-
-    return rangeWithDots;
-  };
-
+  // Updated active filters count to include status filter
   const activeFiltersCount = useMemo(() => {
     return (
-      [brandFilter, verdictFilter, yearFilter].filter((f) => f !== "all")
-        .length + (search ? 1 : 0)
+      [brandFilter, verdictFilter, yearFilter, statusFilter].filter(
+        (f) => f !== "all"
+      ).length + (search ? 1 : 0)
     );
-  }, [brandFilter, verdictFilter, yearFilter, search]);
+  }, [brandFilter, verdictFilter, yearFilter, statusFilter, search]);
 
   // Early return for unauthenticated users
   if (!user) return null;
@@ -498,6 +503,20 @@ export default function AuthenticationsPage() {
                 </SelectContent>
               </Select>
 
+              {/* Status Filter - Added this filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] border-2 focus:border-primary">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="sent">Document Sent</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="voided">Voided</SelectItem>
+                </SelectContent>
+              </Select>
+
               {/* Column Visibility */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -552,7 +571,7 @@ export default function AuthenticationsPage() {
             </div>
           </div>
 
-          {/* Active Filters Display */}
+          {/* Active Filters Display - Updated to include status filter */}
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
               <span className="text-sm font-medium text-muted-foreground">
@@ -584,6 +603,15 @@ export default function AuthenticationsPage() {
                   label="Year"
                   value={yearFilter}
                   onRemove={() => setYearFilter("all")}
+                />
+              )}
+              {statusFilter !== "all" && (
+                <FilterBadge
+                  label="Status"
+                  value={
+                    statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)
+                  }
+                  onRemove={() => setStatusFilter("all")}
                 />
               )}
             </div>
@@ -676,10 +704,33 @@ export default function AuthenticationsPage() {
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan={columns.length}
+                            colSpan={tableColumns.length}
                             className="h-24 text-center text-muted-foreground"
                           >
-                            No results found for your current filters.
+                            {activeFiltersCount > 0 ? (
+                              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                                <div className="rounded-full bg-muted p-3 mb-4">
+                                  <Search className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">
+                                  No results found
+                                </h3>
+                                <p className="text-muted-foreground mb-6 max-w-md">
+                                  No authentication records match your current
+                                  filters. Try adjusting your search criteria or
+                                  clearing some filters.
+                                </p>
+                                <Button
+                                  variant="outline"
+                                  onClick={clearFilters}
+                                >
+                                  <X className="mr-2 h-4 w-4" />
+                                  Clear All Filters
+                                </Button>
+                              </div>
+                            ) : (
+                              "No results found for your current filters."
+                            )}
                           </TableCell>
                         </TableRow>
                       )}

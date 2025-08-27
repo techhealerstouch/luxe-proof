@@ -73,12 +73,23 @@ export interface WatchAuthentication {
   name: string;
   user_information?: string;
   brand: string;
+  model?: string;
+  serial_number?: string;
   authenticity_verdict?: string;
   estimated_production_year?: string;
   final_summary?: string;
   date_of_sale?: string;
   created_at?: string;
   updated_at?: string;
+
+  // Status-related fields for actions functionality
+  status?: string;
+  document_sent_at?: string;
+  resend_count?: number;
+  last_resent_at?: string;
+  void_reason?: string;
+  voided_at?: string;
+  voided_by?: string;
 
   // Nested objects with proper typing
   provenance_documentation_audit?: DocumentsAudit;

@@ -5,6 +5,7 @@ export const UserInformationSchema = z.object({
   brand: z.enum(["Seiko", "Casio", "Citizen", "Rolex", "Omega"], {
     required_error: "Please select a watch brand",
   }),
+  model: z.string().min(1, { message: "Model is required" }),
   user_type: z.enum(["personal", "company"], {
     required_error: "Please select a user type",
   }),
@@ -240,4 +241,5 @@ export const step8Schema = z.object({
     }),
 
   final_summary: z.string().optional(),
+  status: z.string().optional(),
 });

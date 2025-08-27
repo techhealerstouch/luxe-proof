@@ -20,6 +20,7 @@ import {
 import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 type FormValues = {
   brand: string;
+  model: string;
   user_type: string;
   company_name: string;
   abn: string;
@@ -92,6 +93,7 @@ type FormValues = {
   was_polished: string;
   estimated_production_year: string;
   final_summary: string;
+  status: string;
 };
 
 type UserInformationFormProps = {
@@ -138,6 +140,18 @@ export function UserInformationForm({
           )}
         />
 
+        <FormField
+          name={"model" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Model</FormLabel>
+              <FormControl>
+                <Input {...field} value={field.value || ""} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         {/* User Type */}
         <FormField
           name={"user_type" as keyof FormValues}
@@ -305,6 +319,7 @@ export default function Page() {
   const form = useForm<FormValues>({
     defaultValues: {
       brand: "",
+      model: "",
       user_type: "",
       company_name: "",
       abn: "",
@@ -375,6 +390,7 @@ export default function Page() {
       },
       was_polished: "",
       estimated_production_year: "",
+      status: "",
       final_summary: "",
     },
   });
