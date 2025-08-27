@@ -68,6 +68,7 @@ export default function LoginPage() {
           break;
         case "auth_failed":
           setError("Authentication failed. Please check your credentials.");
+          
           break;
         default:
           setError("An error occurred. Please try again.");

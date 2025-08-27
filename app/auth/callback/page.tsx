@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 
 export default function OAuthCallback() {
+  const { logout } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { exchangeAuthorizationCode, fetchUserData } = useAuth();
@@ -105,9 +106,42 @@ export default function OAuthCallback() {
           }
         }
 
-        // Fetch user data
-        console.log("Fetching user data...");
-        await fetchUserData(true); // This will redirect to dashboard
+        const token = data.access_token;
+
+        const response = await fetch(`${baseUrl}/api/user`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const userResponse = await response.json();
+        const user = userResponse?.data;
+
+        if (!user) {
+          throw new Error("User data missing in response");
+        }
+
+        // Check authenticator role
+        const hasAuthenticatorRole = user.roles?.some(
+          (role: { name: string }) => role.name === "authenticator"
+        );
+
+        if (!hasAuthenticatorRole) {
+          setStatus("error");
+          setErrorMessage(
+            "You do not have the required authenticator role to access Luxe Proof."
+          );
+          setTimeout(() => logout(), 2000);
+          return;
+        }
+
+window.location.href = "/dashboard";
       } catch (error: any) {
         console.error("OAuth callback error:", error);
 
