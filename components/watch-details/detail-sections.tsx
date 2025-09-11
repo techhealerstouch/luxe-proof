@@ -2,7 +2,113 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download, FileText, Image } from "lucide-react";
 import { WatchAuthentication } from "@/types/watch-authentication";
+
+// Helper function to get file icon based on file path
+const getFileIcon = (filePath: string | null) => {
+  if (!filePath) return <FileText className="h-4 w-4" />;
+
+  const extension = filePath.split(".").pop()?.toLowerCase();
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(extension || "")) {
+    return <Image className="h-4 w-4" />;
+  }
+  return <FileText className="h-4 w-4" />;
+};
+
+interface DocumentDownloadButtonProps {
+  filePath: string | null;
+  label: string;
+  baseUrl?: string;
+}
+
+const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
+  filePath,
+  label,
+  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api",
+}) => {
+  if (!filePath) {
+    return (
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <Badge variant="secondary" className="text-xs">
+          Not Available
+        </Badge>
+      </div>
+    );
+  }
+
+  // Use API route for download instead of direct storage access
+  const fullUrl = `${baseUrl}/download/${filePath}`;
+  const filename =
+    filePath.split("/").pop() || label.toLowerCase().replace(/\s+/g, "_");
+
+  const handleDownload = async () => {
+    console.log("API Download URL:", fullUrl);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      const response = await fetch(fullUrl, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "*/*",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Get the blob with proper content type
+      const contentType =
+        response.headers.get("content-type") || "application/octet-stream";
+      const blob = await response.blob();
+
+      // Create blob with correct MIME type
+      const properBlob = new Blob([blob], { type: contentType });
+
+      const downloadUrl = window.URL.createObjectURL(properBlob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Cleanup after download
+      setTimeout(() => {
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 1000);
+    } catch (error) {
+      console.error("API download failed:", error);
+      alert(
+        `Download failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  };
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleDownload}
+        className="mt-1 h-8 px-3"
+      >
+        {getFileIcon(filePath)}
+        <span className="ml-2">Download</span>
+        <Download className="h-3 w-3 ml-1" />
+      </Button>
+    </div>
+  );
+};
 
 interface DetailItemProps {
   label: string;
@@ -349,21 +455,29 @@ export const DocumentationSection: React.FC<{
         value={documentation.is_authorized_dealer}
         type="boolean"
       />
-      <DetailItem
+      <DocumentDownloadButton
+        filePath={documentation.warranty_card_path}
         label="Warranty Card"
-        value={documentation.warranty_card_path ? "Available" : "Not Available"}
       />
-      <DetailItem
+      <DocumentDownloadButton
+        filePath={documentation.purchase_receipt_path}
         label="Purchase Receipt"
-        value={
-          documentation.purchase_receipt_path ? "Available" : "Not Available"
-        }
       />
-      <DetailItem
+      <DocumentDownloadButton
+        filePath={documentation.service_records_path}
         label="Service Records"
-        value={
-          documentation.service_records_path ? "Available" : "Not Available"
-        }
+      />
+      <DocumentDownloadButton
+        filePath={documentation.watch_image_front_path}
+        label="Watch Front View"
+      />
+      <DocumentDownloadButton
+        filePath={documentation.watch_image_back_path}
+        label="Watch Back View"
+      />
+      <DocumentDownloadButton
+        filePath={documentation.watch_image_side_path}
+        label="Watch Side View"
       />
       {documentation.warranty_card_notes && (
         <div className="col-span-2">

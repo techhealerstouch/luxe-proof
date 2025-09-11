@@ -35,6 +35,8 @@ interface User {
   businessSlug?: string;
   password?: string;
   password_confirmation?: string;
+  credits?: number; // Add this line
+
   account: Account;
 }
 
@@ -285,7 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const userObject = response.data.data || response.data;
         storeUserData(userObject);
-        toast.success("Profile Updated Successfully!");
+        toast.success("Watch data submitted successfully");
         return userObject;
       } catch (error) {
         toast.error("Profile Update Failed!");

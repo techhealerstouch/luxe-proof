@@ -37,7 +37,6 @@ export const step1Schema = z.object({
     .refine((file) => file.size <= 1 * 1024 * 1024, {
       message: "File size must be less than 1MB",
     }),
-
   watch_image_front: z
     .instanceof(File)
     .refine((file) => file.size > 0, {
@@ -48,7 +47,7 @@ export const step1Schema = z.object({
     })
     .refine((file) => file.size <= 1 * 1024 * 1024, {
       message: "File size must be less than 1MB",
-    }),
+    }), // Changed from watch_images_front
   watch_image_back: z
     .instanceof(File)
     .refine((file) => file.size > 0, {
@@ -59,7 +58,7 @@ export const step1Schema = z.object({
     })
     .refine((file) => file.size <= 1 * 1024 * 1024, {
       message: "File size must be less than 1MB",
-    }),
+    }), // Changed from watch_images_front
   watch_image_side: z
     .instanceof(File)
     .refine((file) => file.size > 0, {
@@ -70,7 +69,7 @@ export const step1Schema = z.object({
     })
     .refine((file) => file.size <= 1 * 1024 * 1024, {
       message: "File size must be less than 1MB",
-    }),
+    }), // Changed from watch_images_front
   purchase_receipt: z // Changed from purchase_receipts
     .instanceof(File)
     .refine((file) => file.size > 0, {
@@ -263,28 +262,6 @@ export const step8Schema = z.object({
       required_error: "Please select an authenticity verdict.",
     }
   ),
-
-  // component_grading: z.object({
-  //   case: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-  //     required_error: "Please select a grade for the case.",
-  //   }),
-  //   bracelet: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-  //     required_error: "Please select a grade for the bracelet.",
-  //   }),
-  //   dial: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-  //     required_error: "Please select a grade for the dial.",
-  //   }),
-  //   bezel: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-  //     required_error: "Please select a grade for the bezel.",
-  //   }),
-  //   crystal: z.enum(["mint", "excellent", "good", "fair", "poor"], {
-  //     required_error: "Please select a grade for the crystal.",
-  //   }),
-  // }),
-
-  // was_polished: z.enum(["yes", "no", "uncertain"], {
-  //   required_error: "Please indicate if the watch was polished.",
-  // }),
 
   estimated_production_year: z
     .string()

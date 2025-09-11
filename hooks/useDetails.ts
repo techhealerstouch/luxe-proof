@@ -14,6 +14,9 @@ type ProvenanceDetails = {
   warranty_card: File[];
   purchase_receipts: File[];
   service_records?: File[];
+  watch_image_front?: File[];
+  watch_image_back?: File[];
+  watch_image_side?: File[];
   warranty_card_notes: string;
   service_history_notes?: string;
 };

@@ -41,21 +41,27 @@ export const WatchViewModal: React.FC<WatchViewModalProps> = ({
 
   if (!watchData) return null;
 
+  // Check if the watch status is voided
+  const isVoided = watchData.status === "voided";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Watch Authentication Details</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPDF}
-              className="ml-2"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Certificate
-            </Button>
+            {/* Only show Download Certificate button if not voided */}
+            {!isVoided && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPDF}
+                className="ml-2"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Certificate
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 

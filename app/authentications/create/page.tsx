@@ -174,11 +174,49 @@ export default function CreateAuthenticationPage() {
     checkValidation();
   }, [router]);
 
+  // Helper function to get current user credits
+  const getCurrentCredits = (): number => {
+    try {
+      const savedCredits = localStorage.getItem("userCredits");
+      return savedCredits ? parseInt(savedCredits, 10) : 0;
+    } catch (error) {
+      console.error("Error reading credits from localStorage:", error);
+      return 0;
+    }
+  };
+
+  // Helper function to deduct credits
+  const deductCredits = (amount: number): boolean => {
+    try {
+      const currentCredits = getCurrentCredits();
+
+      if (currentCredits < amount) {
+        toast.error(
+          `Insufficient credits. You need ${amount} credits but only have ${currentCredits}.`
+        );
+        return false;
+      }
+
+      const newCredits = currentCredits - amount;
+      localStorage.setItem("userCredits", newCredits.toString());
+
+      toast.success(
+        `Authentication submitted successfully! ${amount} credits deducted. Remaining: ${newCredits} credits.`
+      );
+      return true;
+    } catch (error) {
+      console.error("Error deducting credits:", error);
+      toast.error("Error processing credit deduction");
+      return false;
+    }
+  };
+
   // Get the current tab's schema
   const getCurrentSchema = () => {
     const currentTab = tabsData.find((tab) => tab.value === activeTab);
     return currentTab?.schema || emptySchema;
   };
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(getCurrentSchema()),
@@ -233,8 +271,10 @@ export default function CreateAuthenticationPage() {
 
   const handleFinalSubmit = async (data: FormData) => {
     const isStepValid = await trigger();
+    setIsSubmitting(true);
 
     if (!isStepValid) {
+      setIsSubmitting(false);
       toast.error("Please fix the validation errors before proceeding");
       return;
     }
@@ -243,7 +283,18 @@ export default function CreateAuthenticationPage() {
     const finalValidation = fullFormSchema.safeParse(allData);
 
     if (!finalValidation.success) {
+      setIsSubmitting(false);
       toast.error("Please complete all required fields");
+      return;
+    }
+
+    // Check credits before submitting
+    const currentCredits = getCurrentCredits();
+    if (currentCredits < 1000) {
+      setIsSubmitting(false);
+      toast.error(
+        `Insufficient credits. You need 1000 credits but only have ${currentCredits}. Please top up your credits.`
+      );
       return;
     }
 
@@ -253,11 +304,19 @@ export default function CreateAuthenticationPage() {
     try {
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
 
+      // Deduct credits after successful submission
+      const creditDeducted = deductCredits(1000);
+
+      if (!creditDeducted) {
+        // This shouldn't happen since we checked above, but just in case
+        setIsSubmitting(false);
+        return;
+      }
+
       // Clear validation after successful submission
       localStorage.removeItem("validated_serial");
       localStorage.removeItem("serial_validation_timestamp");
 
-      toast.success("Watch data submitted successfully");
       setActiveTab("user-info");
       setCompletedTabs(new Set());
       reset();
@@ -265,6 +324,7 @@ export default function CreateAuthenticationPage() {
       // Redirect to success page or back to intro
       router.push("/authentications/intro");
     } catch (error) {
+      setIsSubmitting(false);
       toast.error("Failed to submit authenticated watch data");
     }
   };
@@ -287,9 +347,12 @@ export default function CreateAuthenticationPage() {
   };
 
   const handleButtonSubmit = async () => {
+    setIsSubmitting(true);
+
     const isStepValid = await trigger();
 
     if (!isStepValid) {
+      setIsSubmitting(false);
       toast.error("Please fix the validation errors before proceeding");
       return;
     }
@@ -298,7 +361,18 @@ export default function CreateAuthenticationPage() {
     const finalValidation = fullFormSchema.safeParse(allData);
 
     if (!finalValidation.success) {
+      setIsSubmitting(false);
       toast.error("Please complete all required fields");
+      return;
+    }
+
+    // Check credits before submitting
+    const currentCredits = getCurrentCredits();
+    if (currentCredits < 1000) {
+      setIsSubmitting(false);
+      toast.error(
+        `Insufficient credits. You need 1000 credits but only have ${currentCredits}. Please top up your credits.`
+      );
       return;
     }
 
@@ -308,11 +382,19 @@ export default function CreateAuthenticationPage() {
     try {
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
 
+      // Deduct credits after successful submission
+      const creditDeducted = deductCredits(1000);
+
+      if (!creditDeducted) {
+        // This shouldn't happen since we checked above, but just in case
+        setIsSubmitting(false);
+        return;
+      }
+
       // Clear validation after successful submission
       localStorage.removeItem("validated_serial");
       localStorage.removeItem("serial_validation_timestamp");
 
-      toast.success("Watch data submitted successfully");
       setActiveTab("user-info");
       setCompletedTabs(new Set());
       reset();
@@ -320,6 +402,7 @@ export default function CreateAuthenticationPage() {
       // Redirect to success page or back to intro
       router.push("/authentications/intro");
     } catch (error) {
+      setIsSubmitting(false);
       toast.error("Failed to submit authenticated watch data");
     }
   };
@@ -355,13 +438,17 @@ export default function CreateAuthenticationPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Watch Authentication Process</h1>
           <p className="text-muted-foreground mt-2">
-            Complete all sections to authenticate your watch
+            Complete all sections to authenticate your watch (Cost: 1000
+            credits)
           </p>
           {validatedSerial && (
-            <div className="mt-2">
+            <div className="mt-2 space-y-2">
               <Badge variant="outline" className="text-green-600">
                 Serial: {validatedSerial}
               </Badge>
+              <div className="text-sm text-muted-foreground">
+                Current Credits: {getCurrentCredits().toLocaleString()}
+              </div>
             </div>
           )}
         </div>
@@ -416,6 +503,11 @@ export default function CreateAuthenticationPage() {
                   <Badge variant="default" className="bg-green-500">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Completed
+                  </Badge>
+                )}
+                {isLastTab && (
+                  <Badge variant="secondary" className="text-orange-600">
+                    Cost: 1000 credits
                   </Badge>
                 )}
               </div>
@@ -506,10 +598,25 @@ export default function CreateAuthenticationPage() {
                       <Button
                         type="button"
                         onClick={handleButtonSubmit}
+                        disabled={isSubmitting || getCurrentCredits() < 1000}
                         className="bg-green-600 hover:bg-green-700"
                       >
-                        Submit Authentication
-                        <CheckCircle className="h-4 w-4 ml-2" />
+                        {isSubmitting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                            Submitting...
+                          </>
+                        ) : getCurrentCredits() < 1000 ? (
+                          <>
+                            Insufficient Credits
+                            <CheckCircle className="h-4 w-4 ml-2" />
+                          </>
+                        ) : (
+                          <>
+                            Submit Authentication (1000 credits)
+                            <CheckCircle className="h-4 w-4 ml-2" />
+                          </>
+                        )}
                       </Button>
                     ) : (
                       <Button type="button" onClick={handleButtonNext}>

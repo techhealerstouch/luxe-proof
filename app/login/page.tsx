@@ -22,9 +22,8 @@ import { useAuth } from "@/components/auth-provider";
 import { AuthLoading } from "@/components/auth-loading";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import {
-  apiService
-} from "@/lib/api-service";
+
+import Logo from "@/components/logo";
 
 
 // PKCE Helpers
@@ -146,7 +145,7 @@ export default function LoginPage() {
           <Card className="w-full border-none shadow-none">
             <CardHeader className="space-y-1">
               <CardTitle className="text-center text-3xl font-extrabold tracking-tight text-gray-900">
-                Welcome Back 👋
+                <Logo width={350} height={80} className="mx-auto" />
               </CardTitle>
               <CardDescription className="text-left leading-relaxed text-center">
                 To access your personalized dashboard and manage your Lux Suite
@@ -176,7 +175,7 @@ export default function LoginPage() {
               <Button
                 variant="outline"
                 type="button"
-                className="w-full rounded-xl"
+                className="w-full rounded-xl bg-main-bg" // hyphen works
                 onClick={redirectToOAuth}
                 disabled={isRedirecting}
               >

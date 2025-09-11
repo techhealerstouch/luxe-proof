@@ -26,28 +26,74 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Eye,
   Edit,
   Download,
   Send,
   Ban,
-  MoreHorizontal,
   Loader2,
   AlertTriangle,
   CheckCircle,
   XCircle,
+  Clock,
 } from "lucide-react";
 import { WatchAuthentication } from "@/types/watch-authentication";
 import { toast } from "@/components/ui/use-toast";
+import { EditAuthenticationModal } from "@/components/authentications/edit-authentication-modal";
 
-// Status Badge Component
+// Helper function to check if edit is allowed (within 3 days of creation)
+const isEditAllowedFor3Days = (createdDate: string | null): boolean => {
+  if (!createdDate) return false;
+
+  const created = new Date(createdDate);
+  const now = new Date();
+  const threeDaysInMs = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
+
+  return now.getTime() - created.getTime() <= threeDaysInMs;
+};
+
+// Helper function to get remaining edit days
+const getRemainingEditDays = (createdDate: string | null): number => {
+  if (!createdDate) return 0;
+
+  const created = new Date(createdDate);
+  const now = new Date();
+
+  created.setHours(0, 0, 0, 0);
+  const currentDate = new Date(now);
+  currentDate.setHours(0, 0, 0, 0);
+
+  const diffInDays = Math.floor(
+    (currentDate.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  return Math.max(0, 3 - diffInDays);
+};
+
+// Helper function to format time ago
+const formatTimeAgo = (dateString: string | null): string => {
+  if (!dateString) return "N/A";
+
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+  if (diffDays > 0) {
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  } else if (diffHours > 0) {
+    return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  } else if (diffMinutes > 0) {
+    return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
+  } else {
+    return "Just now";
+  }
+};
+
+// Updated Status Badge Component
 const StatusBadge = ({
   authentication,
 }: {
@@ -56,6 +102,7 @@ const StatusBadge = ({
   const status = authentication.status;
   const documentSent = authentication.document_sent_at;
 
+  // Voided status
   if (status === "voided") {
     return (
       <Badge className="bg-red-100 text-red-800 border-red-200">
@@ -65,19 +112,7 @@ const StatusBadge = ({
     );
   }
 
-  if (status === "completed" || status === "done" || status === "submitted") {
-    return (
-      <Badge className="bg-green-100 text-green-800 border-green-200">
-        <CheckCircle className="h-3 w-3 mr-1" />
-        {status === "done"
-          ? "Done"
-          : status === "submitted"
-          ? "Submitted"
-          : "Completed"}
-      </Badge>
-    );
-  }
-
+  // Document sent status
   if (documentSent || status === "sent") {
     return (
       <Badge className="bg-blue-100 text-blue-800 border-blue-200">
@@ -87,9 +122,21 @@ const StatusBadge = ({
     );
   }
 
+  // Submitted status
+  if (status === "submitted") {
+    return (
+      <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+        <CheckCircle className="h-3 w-3 mr-1" />
+        Submitted
+      </Badge>
+    );
+  }
+
+  // Default to completed status
   return (
-    <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-      {status}
+    <Badge className="bg-green-100 text-green-800 border-green-200">
+      <CheckCircle className="h-3 w-3 mr-1" />
+      Completed
     </Badge>
   );
 };
@@ -110,20 +157,17 @@ const TableActions: React.FC<TableActionsProps> = ({
 }) => {
   const [resendLoading, setResendLoading] = useState(false);
   const [voidLoading, setVoidLoading] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [voidReason, setVoidReason] = useState("");
   const [resendDialogOpen, setResendDialogOpen] = useState(false);
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
-  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const isDocumentSent =
     watchData.status === "sent" || watchData.document_sent_at;
   const isVoided = watchData.status === "voided";
-  const isCompleted = watchData.status === "completed";
-  const isDone =
-    watchData.status === "done" ||
-    watchData.status === "submitted" ||
-    watchData.status === "completed";
+
+  // Edit is allowed only within 3 days of creation and if not voided
+  const canEdit = !isVoided && isEditAllowedFor3Days(watchData.created_at);
 
   const handleResend = async () => {
     setResendLoading(true);
@@ -153,7 +197,6 @@ const TableActions: React.FC<TableActionsProps> = ({
       });
 
       setResendDialogOpen(false);
-      // Refresh the page data
       window.location.reload();
     } catch (error) {
       console.error("Resend failed:", error);
@@ -167,51 +210,6 @@ const TableActions: React.FC<TableActionsProps> = ({
     }
   };
 
-  const handleSubmitDocument = async () => {
-    setSubmitLoading(true);
-
-    console.log(watchData.id);
-    try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth-products/${watchData.id}/submit`,
-        {
-          method: "PUT", // Changed from POST to PUT
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to submit document");
-      }
-
-      toast({
-        title: "Document Submitted",
-        description: `Authentication certificate for ${watchData.brand} ${
-          watchData.model || ""
-        } has been submitted successfully.`,
-        variant: "default",
-      });
-
-      setSubmitDialogOpen(false);
-      // Refresh the page data
-      window.location.reload();
-    } catch (error) {
-      console.error("Submit failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to submit document. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitLoading(false);
-    }
-  };
-
-  // Updated Frontend - Fix the URL path to match your backend
   const handleVoid = async () => {
     if (!voidReason.trim() || voidReason.trim().length < 10) {
       toast({
@@ -227,7 +225,7 @@ const TableActions: React.FC<TableActionsProps> = ({
     try {
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth-products/${watchData.id}/void`, // Fixed URL to match backend
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth-products/${watchData.id}/void`,
         {
           method: "PUT",
           headers: {
@@ -250,7 +248,6 @@ const TableActions: React.FC<TableActionsProps> = ({
 
       setVoidReason("");
       setVoidDialogOpen(false);
-      // Refresh the page data
       window.location.reload();
     } catch (error) {
       console.error("Void failed:", error);
@@ -262,6 +259,11 @@ const TableActions: React.FC<TableActionsProps> = ({
     } finally {
       setVoidLoading(false);
     }
+  };
+
+  const handleEditSave = () => {
+    // Refresh the page or update the data
+    window.location.reload();
   };
 
   return (
@@ -279,54 +281,48 @@ const TableActions: React.FC<TableActionsProps> = ({
           <span className="sr-only">View details</span>
         </Button>
 
-        {/* Edit Button - disabled if done/submitted/completed or voided */}
-        {!isDone && !isVoided && (
+        {/* Edit Button - Opens Modal */}
+        {canEdit ? (
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-blue-50"
-            onClick={() => onEdit(watchData.id)}
-            title="Edit authentication"
+            className="h-8 w-8 p-0 hover:bg-blue-50 border-blue-200"
+            onClick={() => setEditModalOpen(true)}
+            title={`Edit authentication (${getRemainingEditDays(
+              watchData.created_at
+            )} days left)`}
+          >
+            <Edit className="h-4 w-4 text-blue-600" />
+            <span className="sr-only">Edit</span>
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 opacity-50 cursor-not-allowed"
+            disabled
+            title="Edit period expired (3-day limit)"
           >
             <Edit className="h-4 w-4" />
-            <span className="sr-only">Edit</span>
+            <span className="sr-only">Edit disabled</span>
           </Button>
         )}
 
         {/* Download PDF Button */}
-        {!isVoided && (
+        {!isVoided && watchData.authenticity_verdict && (
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-green-50"
+            className="h-8 w-8 p-0 hover:bg-green-50 border-green-200"
             onClick={() => onDownloadPDF(watchData)}
-            title="Download PDF"
+            title="Download authentication certificate PDF"
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-4 w-4 text-green-600" />
             <span className="sr-only">Download PDF</span>
           </Button>
         )}
 
-        {/* Submit Document Button - only if not submitted and not voided */}
-        {!isDocumentSent && !isDone && !isVoided && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0 hover:bg-purple-50 border-purple-200"
-            onClick={() => setSubmitDialogOpen(true)}
-            disabled={submitLoading}
-            title="Submit document"
-          >
-            {submitLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4 text-purple-600" />
-            )}
-            <span className="sr-only">Submit document</span>
-          </Button>
-        )}
-
-        {/* Resend Document Button - only if document was sent and not voided */}
+        {/* Resend Document Button - Only show if document was sent */}
         {isDocumentSent && !isVoided && (
           <Button
             variant="outline"
@@ -334,7 +330,7 @@ const TableActions: React.FC<TableActionsProps> = ({
             className="h-8 w-8 p-0 hover:bg-blue-50 border-blue-200"
             onClick={() => setResendDialogOpen(true)}
             disabled={resendLoading}
-            title="Resend document"
+            title="Resend authentication certificate"
           >
             {resendLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -345,15 +341,15 @@ const TableActions: React.FC<TableActionsProps> = ({
           </Button>
         )}
 
-        {/* Void Process Button - only if not completed and not voided */}
-        {!isCompleted && !isVoided && (
+        {/* Void Process Button - Only show if not voided */}
+        {!isVoided && (
           <Button
             variant="outline"
             size="sm"
             className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50"
             onClick={() => setVoidDialogOpen(true)}
             disabled={voidLoading}
-            title="Void process"
+            title="Void authentication process"
           >
             {voidLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -365,94 +361,15 @@ const TableActions: React.FC<TableActionsProps> = ({
         )}
       </div>
 
-      {/* Submit Document Dialog */}
-      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Send className="h-5 w-5 text-purple-500" />
-              Submit Authentication Document
-            </DialogTitle>
-            <DialogDescription>
-              This will submit the authentication document for processing and
-              mark it as completed.
-            </DialogDescription>
-          </DialogHeader>
+      {/* Edit Authentication Modal */}
+      <EditAuthenticationModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        watchData={watchData}
+        onSave={handleEditSave}
+      />
 
-          <div className="grid gap-4 py-4">
-            {/* Watch Details Card */}
-            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-              <h4 className="font-medium text-sm">Watch Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Brand:</span>
-                  <span className="ml-2 font-medium">{watchData.brand}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Model:</span>
-                  <span className="ml-2 font-medium">
-                    {watchData.model || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Serial:</span>
-                  <span className="ml-2 font-mono text-xs">
-                    {watchData.serial_number ||
-                      watchData.serial_and_model_number_cross_reference
-                        ?.serial_number ||
-                      "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Verdict:</span>
-                  <span className="ml-2 font-medium">
-                    {watchData.authenticity_verdict || "N/A"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Submission Warning */}
-            <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
-              <h5 className="font-medium text-blue-900 text-sm mb-1">
-                Important:
-              </h5>
-              <ul className="text-xs text-blue-800 space-y-1">
-                <li>• The document will be submitted for final processing</li>
-                <li>• Once submitted, the record cannot be edited</li>
-                <li>• The status will be updated to reflect submission</li>
-                <li>• A confirmation will be sent to relevant parties</li>
-              </ul>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSubmitDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitDocument}
-              disabled={submitLoading}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              {submitLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Submit Document
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Resend Document Dialog */}
       <Dialog open={resendDialogOpen} onOpenChange={setResendDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -467,7 +384,6 @@ const TableActions: React.FC<TableActionsProps> = ({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {/* Watch Details Card */}
             <div className="bg-muted/50 p-4 rounded-lg space-y-2">
               <h4 className="font-medium text-sm">Watch Details</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
@@ -499,7 +415,6 @@ const TableActions: React.FC<TableActionsProps> = ({
               </div>
             </div>
 
-            {/* Send History */}
             {watchData.document_sent_at && (
               <div className="text-sm space-y-1">
                 <div className="flex justify-between">
@@ -527,7 +442,6 @@ const TableActions: React.FC<TableActionsProps> = ({
               </div>
             )}
 
-            {/* Warning for multiple resends */}
             {(watchData.resend_count || 0) >= 2 && (
               <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                 <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
@@ -582,12 +496,11 @@ const TableActions: React.FC<TableActionsProps> = ({
             </AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. The authentication process will be
-              permanently marked as voided.
+              permanently marked as voided and cannot be edited.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="grid gap-4 py-4">
-            {/* Watch Info */}
             <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
               <h4 className="font-medium text-red-900 mb-2">
                 Authentication to be voided:
@@ -605,11 +518,10 @@ const TableActions: React.FC<TableActionsProps> = ({
                       ?.serial_number ||
                     "N/A"}
                 </p>
-                <p>Current Status: {watchData.status || "Pending"}</p>
+                <p>Current Status: {watchData.status || "Completed"}</p>
               </div>
             </div>
 
-            {/* Reason Input */}
             <div className="space-y-2">
               <Label htmlFor="void-reason" className="text-sm font-medium">
                 Reason for voiding <span className="text-red-500">*</span>
@@ -627,7 +539,6 @@ const TableActions: React.FC<TableActionsProps> = ({
               </p>
             </div>
 
-            {/* Consequences Warning */}
             <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
               <h5 className="font-medium text-yellow-900 text-sm mb-1">
                 Consequences:
@@ -635,8 +546,8 @@ const TableActions: React.FC<TableActionsProps> = ({
               <ul className="text-xs text-yellow-800 space-y-1">
                 <li>• The authentication process will be permanently voided</li>
                 <li>• No further actions can be taken on this record</li>
+                <li>• Edit access will be permanently revoked</li>
                 <li>• The action will be logged in the audit trail</li>
-                <li>• A notification may be sent to relevant parties</li>
               </ul>
             </div>
           </div>
@@ -684,21 +595,27 @@ interface AuthenticityBadgeProps {
 }
 
 const AuthenticityBadge: React.FC<AuthenticityBadgeProps> = ({ verdict }) => {
+  if (!verdict) {
+    return (
+      <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
+        Not Available
+      </Badge>
+    );
+  }
+
   const isAuthentic =
-    verdict?.toLowerCase() === "authentic" ||
-    verdict?.toLowerCase() === "genuine";
+    verdict.toLowerCase() === "authentic" ||
+    verdict.toLowerCase() === "genuine";
 
   return (
     <Badge
       className={
         isAuthentic
           ? "bg-green-500 hover:bg-green-600 text-white"
-          : verdict
-          ? "bg-red-500 hover:bg-red-600 text-white"
-          : "bg-gray-500 hover:bg-gray-600 text-white"
+          : "bg-red-500 hover:bg-red-600 text-white"
       }
     >
-      {verdict || "Pending"}
+      {verdict}
     </Badge>
   );
 };
@@ -708,6 +625,7 @@ interface ColumnHandlers {
   handleEdit: (id: string) => void;
   handleDownloadPDF: (data: WatchAuthentication) => void;
 }
+
 export const createTableColumns = ({
   handleView,
   handleEdit,
@@ -723,7 +641,11 @@ export const createTableColumns = ({
       const isVoided = row.original.status === "voided";
 
       return (
-        <div className={`font-mono text-sm ${isVoided ? "text-gray-400" : ""}`}>
+        <div
+          className={`font-mono text-sm ${
+            isVoided ? "text-gray-400 line-through" : ""
+          }`}
+        >
           {serialNumber || "N/A"}
         </div>
       );
@@ -735,7 +657,11 @@ export const createTableColumns = ({
     cell: ({ row }) => {
       const isVoided = row.original.status === "voided";
       return (
-        <div className={`font-medium ${isVoided ? "text-gray-400" : ""}`}>
+        <div
+          className={`font-medium ${
+            isVoided ? "text-gray-400 line-through" : ""
+          }`}
+        >
           {row.original.name}
         </div>
       );
@@ -747,7 +673,9 @@ export const createTableColumns = ({
     cell: ({ row }) => {
       const isVoided = row.original.status === "voided";
       return (
-        <div className={`text-sm ${isVoided ? "text-gray-400" : ""}`}>
+        <div
+          className={`text-sm ${isVoided ? "text-gray-400 line-through" : ""}`}
+        >
           {row.original.brand}
         </div>
       );
@@ -759,7 +687,9 @@ export const createTableColumns = ({
     cell: ({ row }) => {
       const isVoided = row.original.status === "voided";
       return (
-        <div className={`text-sm ${isVoided ? "text-gray-400" : ""}`}>
+        <div
+          className={`text-sm ${isVoided ? "text-gray-400 line-through" : ""}`}
+        >
           {row.original.model || "N/A"}
         </div>
       );
@@ -771,7 +701,9 @@ export const createTableColumns = ({
     cell: ({ row }) => {
       const isVoided = row.original.status === "voided";
       return (
-        <div className={`text-sm ${isVoided ? "text-gray-400" : ""}`}>
+        <div
+          className={`text-sm ${isVoided ? "text-gray-400 line-through" : ""}`}
+        >
           {row.original.estimated_production_year || "N/A"}
         </div>
       );
@@ -784,7 +716,9 @@ export const createTableColumns = ({
       const saleDate = row.original.date_of_sale;
       const isVoided = row.original.status === "voided";
       return (
-        <div className={`text-sm ${isVoided ? "text-gray-400" : ""}`}>
+        <div
+          className={`text-sm ${isVoided ? "text-gray-400 line-through" : ""}`}
+        >
           {saleDate || "N/A"}
         </div>
       );
@@ -799,7 +733,8 @@ export const createTableColumns = ({
       if (isVoided) {
         return (
           <Badge className="bg-gray-100 text-gray-500 border-gray-200">
-            {row.original.authenticity_verdict || "Pending"}
+            <XCircle className="h-3 w-3 mr-1" />
+            {row.original.authenticity_verdict || "Voided"}
           </Badge>
         );
       }
@@ -811,20 +746,61 @@ export const createTableColumns = ({
     id: "status",
     header: "Status",
     cell: ({ row }) => {
-      console.log("Status cell row:", row);
       return <StatusBadge authentication={row.original} />;
     },
     filterFn: (row, id, value) => {
-      console.log("FilterFn row:", row.original);
-      console.log("FilterFn id:", id);
-      console.log("FilterFn value:", value);
       const status = row.original.status;
       const documentSent = row.original.document_sent_at;
 
       if (value === "sent") {
         return status === "sent" || !!documentSent;
       }
+      if (value === "completed") {
+        return !status || status === "completed" || (!documentSent && !status);
+      }
       return status === value;
+    },
+  },
+  {
+    accessorKey: "created_at",
+    header: "Created",
+    cell: ({ row }) => {
+      const isVoided = row.original.status === "voided";
+      const createdAt = row.original.created_at;
+      const timeAgo = formatTimeAgo(createdAt);
+
+      const editAllowed = isEditAllowedFor3Days(createdAt);
+      const remainingDays = getRemainingEditDays(createdAt);
+
+      return (
+        <div className={`text-sm ${isVoided ? "text-gray-400" : ""}`}>
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3 text-muted-foreground" />
+            <span>{timeAgo}</span>
+          </div>
+          {!isVoided && editAllowed && (
+            <div className="text-xs text-green-600 mt-1 font-medium">
+              ✏️ Can edit ({remainingDays} day{remainingDays !== 1 ? "s" : ""}{" "}
+              remaining)
+            </div>
+          )}
+          {!isVoided && !editAllowed && (
+            <div className="text-xs text-red-600 mt-1">
+              🔒 Edit period expired
+            </div>
+          )}
+          {createdAt && (
+            <div className="text-xs text-muted-foreground mt-1">
+              {new Date(createdAt).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+      );
+    },
+    sortingFn: (rowA, rowB) => {
+      const dateA = new Date(rowA.original.created_at || 0);
+      const dateB = new Date(rowB.original.created_at || 0);
+      return dateB.getTime() - dateA.getTime(); // Most recent first
     },
   },
   {
