@@ -16,9 +16,10 @@ import {
   Award,
   Search,
   AlertCircle,
+  Icon,
 } from "lucide-react";
 import Link from "next/link";
-
+import IconCompany from "@/components/icon";
 export default function Intro() {
   const router = useRouter();
   const [serialNumber, setSerialNumber] = useState("");
@@ -146,10 +147,7 @@ export default function Intro() {
         <Card className="w-full max-w-4xl shadow-2xl rounded-3xl p-8 border-2">
           <CardContent className="space-y-8">
             <div className="text-center space-y-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Shield className="w-8 h-8 text-primary" />
-              </div>
-
+              <IconCompany width={100} height={20} className="mx-auto" />
               <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
                 The Expert's 8-Step Watch
                 <br /> Authentication Protocol

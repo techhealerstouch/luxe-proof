@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -18,18 +17,16 @@ import {
   LogOut,
   ChevronUp,
   List,
-  Plus,
   BarChart3,
-  Menu,
-  X,
-  User,
-  CircleDollarSign,
   UserRound,
+  CircleDollarSign,
   Watch,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import TopNavigation from "@/components/top-navigation"; // Adjust import path as needed
+import Logo from "./logo";
 
 const menuItems = [
   {
@@ -37,11 +34,6 @@ const menuItems = [
     url: "/dashboard",
     icon: BarChart3,
   },
-  // {
-  //   title: "User List",
-  //   url: "/users",
-  //   icon: User,
-  // },
   {
     title: "Create Authentication",
     url: "/authentications/intro",
@@ -64,6 +56,7 @@ function AppSidebar({
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -78,8 +71,11 @@ function AppSidebar({
     >
       {/* Sidebar Header */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
-        <Shield className="h-6 w-6" />
-        {isOpen && <span className="font-semibold">Luxe Proof</span>}
+        {isOpen && (
+          <span className="font-semibold">
+            <Logo width={300} height={20} className="mx-auto" />
+          </span>
+        )}
       </div>
 
       {/* Sidebar Content */}
@@ -191,27 +187,11 @@ export default function DashboardLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="flex h-16 items-center gap-4 border-b bg-background px-4 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="h-8 w-8"
-          >
-            {sidebarOpen ? (
-              <X className="h-4 w-4" />
-            ) : (
-              <Menu className="h-4 w-4" />
-            )}
-          </Button>
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-lg">
-              Watch Authentication System
-            </span>
-          </div>
-        </header>
+        {/* Top Navigation */}
+        <TopNavigation
+          sidebarOpen={sidebarOpen}
+          toggleSidebar={toggleSidebar}
+        />
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6">

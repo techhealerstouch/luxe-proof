@@ -14,8 +14,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { FileInput } from "@/components/ui/file-input";
 import { UseFormReturn } from "react-hook-form";
-import { AlertCircle, FileCheck, Upload } from "lucide-react";
+import { AlertCircle, FileCheck, Upload, Camera, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState, useEffect } from "react";
 
 type Step1FormProps = {
   form: UseFormReturn<any>;
@@ -23,6 +24,48 @@ type Step1FormProps = {
   onBack: () => void;
   step: number;
   isLoading?: boolean;
+};
+
+// Image Preview Component
+const ImagePreview = ({
+  file,
+  onRemove,
+}: {
+  file: File | null;
+  onRemove: () => void;
+}) => {
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+
+    // Cleanup
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!file || !preview) return null;
+
+  return (
+    <div className="relative mt-3 group">
+      <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+        <img src={preview} alt="Preview" className="w-full h-32 object-cover" />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <p className="text-xs text-gray-500 mt-1 truncate">{file.name}</p>
+    </div>
+  );
 };
 
 export function Step1Form({
@@ -34,48 +77,159 @@ export function Step1Form({
 }: Step1FormProps) {
   const { control, handleSubmit, watch, formState } = form;
 
-  // Watch required fields to show progress
+  // Watch required fields to show progress (updated for single files and including watch images)
   const warrantyCard = watch("warranty_card");
-  const purchaseReceipts = watch("purchase_receipts");
-  const authorizedDealer = watch("authorized_dealer");
+  const purchaseReceipt = watch("purchase_receipt");
+  const authorizedDealer = watch("is_authorized_dealer");
   const warrantyCardNotes = watch("warranty_card_notes");
-
+  const watchImageFront = watch("watch_image_front");
+  const watchImageSide = watch("watch_image_side");
+  const watchImageBack = watch("watch_image_back");
   const requiredFieldsCompleted = [
-    warrantyCard?.length > 0,
-    purchaseReceipts?.length > 0,
+    warrantyCard !== null && warrantyCard !== undefined,
+    purchaseReceipt !== null && purchaseReceipt !== undefined,
     authorizedDealer !== undefined,
     warrantyCardNotes?.trim(),
+    watchImageFront !== null && watchImageFront !== undefined,
+    watchImageBack !== null && watchImageBack !== undefined,
+    watchImageSide !== null && watchImageSide !== undefined,
   ].filter(Boolean).length;
 
-  const totalRequiredFields = 4;
+  const totalRequiredFields = 6;
 
   return (
     <div className="space-y-6">
-      {/* Progress indicator */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-blue-900">Documentation Review</h3>
-          <div className="flex items-center gap-2 text-sm text-blue-700">
-            <FileCheck className="h-4 w-4" />
-            {requiredFieldsCompleted}/{totalRequiredFields} required fields
-            completed
-          </div>
-        </div>
-        <div className="w-full bg-blue-200 rounded-full h-2">
-          <div
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-in-out"
-            style={{
-              width: `${
-                (requiredFieldsCompleted / totalRequiredFields) * 100
-              }%`,
-            }}
-          />
-        </div>
-      </div>
-
       <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Warranty Card Upload */}
+          {/* Watch Images Section */}
+          <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Camera className="h-5 w-5 text-orange-600" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                Watch Images
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Upload clear, high-quality images of the watch from different
+              angles (PNG or JPG only, max 2MB each).
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Front View */}
+
+              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                <FormField
+                  name="watch_image_front"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Camera className="h-4 w-4 text-orange-600" />
+                        <FormLabel className="text-sm font-semibold">
+                          Front View *
+                        </FormLabel>
+                      </div>
+                      <p className="text-xs text-gray-600 mb-3">
+                        Clear front view showing the dial and hands
+                      </p>
+                      <FormControl>
+                        <FileInput
+                          value={field.value ? [field.value] : []}
+                          onChange={(newFiles: File[]) =>
+                            field.onChange(newFiles[0] || null)
+                          }
+                          accept="image/png,image/jpeg,image/jpg"
+                          maxSize={2}
+                          maxFiles={1}
+                          className="border-dashed border-2 border-orange-200 hover:border-orange-300"
+                        />
+                      </FormControl>
+                      <ImagePreview
+                        file={field.value}
+                        onRemove={() => field.onChange(null)}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Back View */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                <FormField
+                  name="watch_image_back"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Camera className="h-4 w-4 text-red-600" />
+                        <FormLabel className="text-sm font-semibold">
+                          Back View *
+                        </FormLabel>
+                      </div>
+                      <p className="text-xs text-gray-600 mb-3">
+                        Case back showing serial number and engravings
+                      </p>
+                      <FormControl>
+                        <FileInput
+                          value={field.value ? [field.value] : []}
+                          onChange={(newFiles: File[]) =>
+                            field.onChange(newFiles[0] || null)
+                          }
+                          accept="image/png,image/jpeg,image/jpg"
+                          maxSize={2}
+                          maxFiles={1}
+                          className="border-dashed border-2 border-red-200 hover:border-red-300"
+                        />
+                      </FormControl>
+                      <ImagePreview
+                        file={field.value}
+                        onRemove={() => field.onChange(null)}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Side View */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                <FormField
+                  name="watch_image_side"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Camera className="h-4 w-4 text-indigo-600" />
+                        <FormLabel className="text-sm font-semibold">
+                          Side View *
+                        </FormLabel>
+                      </div>
+                      <p className="text-xs text-gray-600 mb-3">
+                        Profile view showing case thickness and crown
+                      </p>
+                      <FormControl>
+                        <FileInput
+                          value={field.value ? [field.value] : []}
+                          onChange={(newFiles: File[]) =>
+                            field.onChange(newFiles[0] || null)
+                          }
+                          accept="image/png,image/jpeg,image/jpg"
+                          maxSize={2}
+                          maxFiles={1}
+                          className="border-dashed border-2 border-indigo-200 hover:border-indigo-300"
+                        />
+                      </FormControl>
+                      <ImagePreview
+                        file={field.value}
+                        onRemove={() => field.onChange(null)}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Warranty Card Upload - Single Image File */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
             <FormField
               name="warranty_card"
@@ -88,56 +242,70 @@ export function Step1Form({
                     </FormLabel>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
-                    Upload clear images or PDF of the warranty card. Multiple
-                    files supported.
+                    Upload a clear image of the warranty card (PNG or JPG only,
+                    max 1MB).
                   </p>
                   <FormControl>
                     <FileInput
-                      value={field.value || []}
-                      onChange={(newFiles: File[]) => field.onChange(newFiles)}
-                      accept="image/*,.pdf"
-                      maxSize={10} // 10MB
+                      value={field.value ? [field.value] : []}
+                      onChange={(newFiles: File[]) =>
+                        field.onChange(newFiles[0] || null)
+                      }
+                      accept="image/png,image/jpeg,image/jpg"
+                      maxSize={1}
+                      maxFiles={1}
                       className="border-dashed border-2 border-blue-200 hover:border-blue-300"
                     />
                   </FormControl>
+                  <ImagePreview
+                    file={field.value}
+                    onRemove={() => field.onChange(null)}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
 
-          {/* Purchase Receipts Upload */}
+          {/* Purchase Receipt Upload - Single Image File */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
             <FormField
-              name="purchase_receipts"
+              name="purchase_receipt"
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2 mb-3">
                     <Upload className="h-5 w-5 text-green-600" />
                     <FormLabel className="text-base font-semibold">
-                      Purchase Receipts *
+                      Purchase Receipt *
                     </FormLabel>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
-                    Upload purchase receipts, invoices, or proof of purchase
-                    documents.
+                    Upload purchase receipt or proof of purchase image (PNG or
+                    JPG only, max 1MB).
                   </p>
                   <FormControl>
                     <FileInput
-                      value={field.value || []}
-                      onChange={(newFiles: File[]) => field.onChange(newFiles)}
-                      accept="image/*,.pdf"
-                      maxSize={10}
+                      value={field.value ? [field.value] : []}
+                      onChange={(newFiles: File[]) =>
+                        field.onChange(newFiles[0] || null)
+                      }
+                      accept="image/png,image/jpeg,image/jpg"
+                      maxSize={1}
+                      maxFiles={1}
                       className="border-dashed border-2 border-green-200 hover:border-green-300"
                     />
                   </FormControl>
+                  <ImagePreview
+                    file={field.value}
+                    onRemove={() => field.onChange(null)}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
 
-          {/* Service Records Upload */}
+          {/* Service Records Upload - Single Image File */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
             <FormField
               name="service_records"
@@ -151,28 +319,35 @@ export function Step1Form({
                     <span className="text-sm text-gray-500">(Optional)</span>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
-                    Upload any service records, maintenance documents, or repair
-                    history.
+                    Upload service records or maintenance document image (PNG or
+                    JPG only, max 1MB).
                   </p>
                   <FormControl>
                     <FileInput
-                      value={field.value || []}
-                      onChange={(newFiles: File[]) => field.onChange(newFiles)}
-                      accept="image/*,.pdf"
-                      maxSize={10}
+                      value={field.value ? [field.value] : []}
+                      onChange={(newFiles: File[]) =>
+                        field.onChange(newFiles[0] || null)
+                      }
+                      accept="image/png,image/jpeg,image/jpg"
+                      maxSize={1}
+                      maxFiles={1}
                       className="border-dashed border-2 border-purple-200 hover:border-purple-300"
                     />
                   </FormControl>
+                  <ImagePreview
+                    file={field.value}
+                    onRemove={() => field.onChange(null)}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
 
-          {/* Authorized Dealer */}
+          {/* Authorized Dealer - FIXED FIELD NAME */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
             <FormField
-              name="authorized_dealer"
+              name="is_authorized_dealer"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-base font-semibold mb-4 block">
@@ -287,16 +462,6 @@ export function Step1Form({
               )}
             />
           </div>
-
-          {/* Validation Alert */}
-          {Object.keys(formState.errors).length > 0 && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Please complete all required fields before proceeding.
-              </AlertDescription>
-            </Alert>
-          )}
         </form>
       </Form>
     </div>

@@ -4,6 +4,10 @@ export interface DocumentsAudit {
   warranty_card_path?: string;
   purchase_receipt_path?: string;
   service_records_path?: string;
+
+  watch_image_front_path?: string;
+  watch_image_back_path?: string;
+  watch_image_side_path?: string;
   is_authorized_dealer?: boolean;
   warranty_card_notes?: string;
   service_history_notes?: string;

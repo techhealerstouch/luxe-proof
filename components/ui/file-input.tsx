@@ -41,15 +41,26 @@ const FileInput = ({
   const [errors, setErrors] = React.useState<string[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  // Determine if this is single file mode
+  const isSingleFile = maxFiles === 1;
   const getFileIcon = (file: File) => {
-    if (file.type.startsWith("image/")) {
-      return <Image className="h-4 w-4 text-blue-500" />;
-    } else if (file.type === "application/pdf") {
-      return <FileText className="h-4 w-4 text-red-500" />;
-    }
-    return <FileIcon className="h-4 w-4 text-gray-500" />;
-  };
+    const fileType = file?.type || "";
+    const fileName = file?.name || "";
 
+    if (fileType.startsWith("image/")) {
+      return <Image className="h-4 w-4 text-blue-500" />;
+    } else if (fileType === "application/pdf") {
+      return <FileText className="h-4 w-4 text-red-500" />;
+    } else if (fileName.toLowerCase().includes(".pdf")) {
+      // Fallback for PDF files that might not have correct MIME type
+      return <FileText className="h-4 w-4 text-red-500" />;
+    } else if (fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      // Fallback for image files that might not have correct MIME type
+      return <Image className="h-4 w-4 text-blue-500" />;
+    } else {
+      return <FileText className="h-4 w-4 text-gray-500" />;
+    }
+  };
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -92,7 +103,12 @@ const FileInput = ({
       validFiles.push(file);
     });
 
-    // Check total file count
+    // For single file mode, replace existing file
+    if (isSingleFile && validFiles.length > 0) {
+      return { validFiles: [validFiles[0]], errors: newErrors };
+    }
+
+    // Check total file count for multiple file mode
     if (value.length + validFiles.length > maxFiles) {
       newErrors.push(`Maximum ${maxFiles} files allowed`);
       return {
@@ -137,7 +153,12 @@ const FileInput = ({
         }, 200);
       });
 
-      onChange?.([...(value || []), ...validFiles]);
+      // For single file mode, replace the current file
+      if (isSingleFile) {
+        onChange?.(validFiles);
+      } else {
+        onChange?.([...(value || []), ...validFiles]);
+      }
     }
 
     // Clear input
@@ -183,9 +204,13 @@ const FileInput = ({
   };
 
   const handleRemove = (index: number) => {
-    const updatedFiles = [...value];
-    updatedFiles.splice(index, 1);
-    onChange?.(updatedFiles);
+    if (isSingleFile) {
+      onChange?.([]);
+    } else {
+      const updatedFiles = [...value];
+      updatedFiles.splice(index, 1);
+      onChange?.(updatedFiles);
+    }
     setErrors([]); // Clear errors when removing files
   };
 
@@ -213,13 +238,15 @@ const FileInput = ({
         role="button"
         tabIndex={0}
         aria-disabled={disabled}
-        aria-label={`Upload files. Accepted formats: ${accept}. Max size: ${maxSize}MB per file.`}
+        aria-label={`Upload ${
+          isSingleFile ? "file" : "files"
+        }. Accepted formats: ${accept}. Max size: ${maxSize}MB per file.`}
       >
         <input
           ref={inputRef}
           type="file"
           accept={accept}
-          multiple
+          multiple={!isSingleFile}
           disabled={disabled}
           onChange={handleChange}
           className="hidden"
@@ -252,14 +279,18 @@ const FileInput = ({
               {accept.includes("image") && "Images"}
               {accept.includes("image") && accept.includes(".pdf") && " & "}
               {accept.includes(".pdf") && "PDF"}
-              {` up to ${maxSize}MB each (max ${maxFiles} files)`}
+              {isSingleFile
+                ? ` up to ${maxSize}MB`
+                : ` up to ${maxSize}MB each (max ${maxFiles} files)`}
             </p>
           </div>
         </div>
 
         {isDragging && (
           <div className="absolute inset-0 bg-blue-100 bg-opacity-50 rounded-lg flex items-center justify-center">
-            <div className="text-blue-600 font-medium">Drop files here</div>
+            <div className="text-blue-600 font-medium">
+              Drop {isSingleFile ? "file" : "files"} here
+            </div>
           </div>
         )}
       </div>
@@ -295,9 +326,11 @@ const FileInput = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-gray-700">
-              Uploaded Files ({value.length}/{maxFiles})
+              {isSingleFile
+                ? "Selected File"
+                : `Uploaded Files (${value.length}/${maxFiles})`}
             </h4>
-            {value.length > 1 && (
+            {!isSingleFile && value.length > 1 && (
               <Button
                 type="button"
                 variant="ghost"
