@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Shield,
   Settings,
@@ -25,7 +26,7 @@ import {
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import TopNavigation from "@/components/top-navigation"; // Adjust import path as needed
+import TopNavigation from "@/components/top-navigation";
 import Logo from "./logo";
 
 const menuItems = [
@@ -46,12 +47,12 @@ const menuItems = [
   },
 ];
 
-function AppSidebar({
+function SidebarContent({
   isOpen,
-  className,
+  onLinkClick,
 }: {
   isOpen: boolean;
-  className?: string;
+  onLinkClick?: () => void;
 }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
@@ -60,21 +61,25 @@ function AppSidebar({
   const handleLogout = () => {
     logout();
     router.push("/login");
+    onLinkClick?.();
+  };
+
+  const handleLinkClick = () => {
+    onLinkClick?.();
   };
 
   return (
-    <div
-      className={cn(
-        "bg-sidebar border-r border-sidebar-border flex flex-col",
-        className
-      )}
-    >
+    <div className="bg-sidebar border-r border-sidebar-border flex flex-col h-full">
       {/* Sidebar Header */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
-        {isOpen && (
+        {isOpen ? (
           <span className="font-semibold">
             <Logo width={300} height={20} className="mx-auto" />
           </span>
+        ) : (
+          <div className="mx-auto">
+            <Logo width={32} height={32} className="mx-auto" />
+          </div>
         )}
       </div>
 
@@ -93,11 +98,12 @@ function AppSidebar({
               <Link
                 key={item.title}
                 href={item.url}
+                onClick={handleLinkClick}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   pathname === item.url
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    ? "text-sidebar-accent-foreground" // Fixed: bg-[#dcbb7e]
                     : "text-sidebar-foreground"
                 )}
               >
@@ -135,19 +141,19 @@ function AppSidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-56">
             <DropdownMenuItem asChild>
-              <Link href="/profile">
+              <Link href="/profile" onClick={handleLinkClick}>
                 <UserRound className="mr-2 h-4 w-4" />
                 Profile
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings">
+              <Link href="/settings" onClick={handleLinkClick}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/billing">
+              <Link href="/billing" onClick={handleLinkClick}>
                 <CircleDollarSign className="mr-2 h-4 w-4" />
                 Billing
               </Link>
@@ -169,30 +175,62 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+
+  // Check if screen is mobile
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    if (isMobile) {
+      setMobileSheetOpen(!mobileSheetOpen);
+    } else {
+      setSidebarOpen(!sidebarOpen);
+    }
+  };
+
+  const handleMobileLinkClick = () => {
+    setMobileSheetOpen(false);
   };
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <AppSidebar
-        isOpen={sidebarOpen}
-        className={cn(
-          "transition-all duration-300 ease-in-out",
-          sidebarOpen ? "w-64" : "w-16"
-        )}
-      />
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <div
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            sidebarOpen ? "w-64" : "w-16"
+          )}
+        >
+          <SidebarContent isOpen={sidebarOpen} />
+        </div>
+      )}
+
+      {/* Mobile Sidebar Sheet */}
+      {isMobile && (
+        <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+          <SheetContent side="left" className="p-0 w-64">
+            <SidebarContent isOpen={true} onLinkClick={handleMobileLinkClick} />
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Navigation */}
         <TopNavigation
-          sidebarOpen={sidebarOpen}
+          sidebarOpen={isMobile ? mobileSheetOpen : sidebarOpen}
           toggleSidebar={toggleSidebar}
         />
-
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6">
           <div className="space-y-6">{children}</div>

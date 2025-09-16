@@ -24,13 +24,52 @@ import {
   Clock,
   AlertTriangle,
   Plus,
+  ExternalLink,
+  Copy,
 } from "lucide-react";
+import axios from "axios";
+import { toast } from "sonner";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type PlanType = "free" | "pro" | "enterprise";
+
+interface CreditInvoice {
+  id: string;
+  external_id: string;
+  amount: number;
+  quantity: number;
+  status: string;
+  payment_url: string;
+  created_at: string;
+  updated_at: string;
+  credit?: {
+    name: string;
+    price: number;
+  };
+}
+
+interface Subscription {
+  id: number;
+  account_id: number;
+  plan_id: number;
+  service: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  price: number;
+  created_at: string;
+  updated_at: string;
+  plan: {
+    id: number;
+    name: string;
+    price: number;
+    description: string;
+    features: string[];
+  };
+}
 
 type BillingData = {
   currentPlan: {
@@ -56,6 +95,8 @@ type BillingData = {
     invoice_url?: string;
     description: string;
   }[];
+  creditsInvoices: CreditInvoice[];
+  subscriptions: Subscription[];
 };
 
 // ============================================================================
@@ -63,53 +104,9 @@ type BillingData = {
 // ============================================================================
 
 const mockBillingData: BillingData = {
-  currentPlan: {
-    name: "Pro Plan",
-    type: "pro",
-    price: 29.99,
-    billingCycle: "monthly",
-    features: [
-      "Unlimited projects",
-      "Advanced analytics",
-      "Priority support",
-      "Custom integrations",
-      "Team collaboration",
-    ],
-    nextBillingDate: "2025-09-20",
-  },
-  paymentMethod: {
-    type: "card",
-    last4: "4242",
-    brand: "Visa",
-    expiryMonth: 12,
-    expiryYear: 2027,
-  },
-  billingHistory: [
-    {
-      id: "inv_001",
-      date: "2025-08-20",
-      amount: 29.99,
-      status: "paid",
-      invoice_url: "#",
-      description: "Pro Plan - Monthly subscription",
-    },
-    {
-      id: "inv_002",
-      date: "2025-07-20",
-      amount: 29.99,
-      status: "paid",
-      invoice_url: "#",
-      description: "Pro Plan - Monthly subscription",
-    },
-    {
-      id: "inv_003",
-      date: "2025-06-20",
-      amount: 29.99,
-      status: "paid",
-      invoice_url: "#",
-      description: "Pro Plan - Monthly subscription",
-    },
-  ],
+  billingHistory: [],
+  creditsInvoices: [],
+  subscriptions: [],
 };
 
 // ============================================================================
@@ -125,19 +122,23 @@ const formatDate = (dateString: string): string => {
 };
 
 const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-PH", {
     style: "currency",
-    currency: "USD",
+    currency: "PHP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 };
 
 const getStatusBadge = (status: string) => {
-  switch (status) {
+  const normalizedStatus = status.toLowerCase();
+  switch (normalizedStatus) {
     case "paid":
+    case "active":
       return (
         <Badge variant="default" className="bg-green-100 text-green-800">
           <CheckCircle className="w-3 h-3 mr-1" />
-          Paid
+          {status === "active" ? "Active" : "Paid"}
         </Badge>
       );
     case "pending":
@@ -148,10 +149,11 @@ const getStatusBadge = (status: string) => {
         </Badge>
       );
     case "failed":
+    case "cancelled":
       return (
         <Badge variant="destructive" className="bg-red-100 text-red-800">
           <AlertTriangle className="w-3 h-3 mr-1" />
-          Failed
+          {status === "cancelled" ? "Cancelled" : "Failed"}
         </Badge>
       );
     default:
@@ -172,6 +174,20 @@ const getPlanBadge = (planType: PlanType) => {
   }
 };
 
+// Helper function to get active subscription
+const getActiveSubscription = (
+  subscriptions: Subscription[]
+): Subscription | null => {
+  return (
+    subscriptions.find(
+      (sub) =>
+        sub.status === "active" ||
+        sub.status === "pending" ||
+        (sub.status !== "cancelled" && new Date(sub.end_date) > new Date())
+    ) || null
+  );
+};
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -182,19 +198,90 @@ export default function BillingPage() {
   const [billingData, setBillingData] = useState<BillingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ============================================================================
+  // API Functions
+  // ============================================================================
+
+  const fetchCreditsInvoices = async (): Promise<CreditInvoice[]> => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/credits/invoices`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.data.success) {
+        return response.data.data || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Failed to fetch credits invoices:", error);
+      return [];
+    }
+  };
+  const fetchSubscriptions = async (): Promise<Subscription[]> => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.message === "Subscriptions retrieved successfully.") {
+        return response.data.data || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Failed to fetch subscriptions:", error);
+      return [];
+    }
+  };
+
+  const openInvoiceLink = (invoiceUrl: string) => {
+    window.open(invoiceUrl, "_blank");
+  };
+
+  const copyInvoiceLink = async (invoiceUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(invoiceUrl);
+      toast.success("Invoice link copied to clipboard!");
+    } catch (error) {
+      toast.error("Failed to copy link");
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       router.push("/login");
       return;
     }
 
-    // Simulate API call
+    // Fetch billing data
     const fetchBillingData = async () => {
       setIsLoading(true);
       try {
-        // Replace with actual API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setBillingData(mockBillingData);
+        // Fetch both credits invoices and subscriptions
+        const [creditsInvoices, subscriptions] = await Promise.all([
+          fetchCreditsInvoices(),
+          fetchSubscriptions(),
+        ]);
+
+        setBillingData({
+          ...mockBillingData,
+          creditsInvoices,
+          subscriptions,
+        });
       } catch (error) {
         console.error("Failed to fetch billing data:", error);
       } finally {
@@ -205,18 +292,7 @@ export default function BillingPage() {
     fetchBillingData();
   }, [user, router]);
 
-  const handleUpgradePlan = () => {
-    // Handle plan upgrade logic
-    console.log("Upgrade plan clicked");
-  };
-
-  const handleUpdatePaymentMethod = () => {
-    // Handle payment method update logic
-    console.log("Update payment method clicked");
-  };
-
   const handleDownloadInvoice = (invoiceUrl: string) => {
-    // Handle invoice download logic
     console.log("Download invoice:", invoiceUrl);
   };
 
@@ -273,136 +349,182 @@ export default function BillingPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-bold">
-                      {billingData?.currentPlan.name}
-                    </h3>
-                    {getPlanBadge(billingData?.currentPlan.type || "free")}
-                  </div>
+              {billingData?.subscriptions &&
+              billingData.subscriptions.length > 0 ? (
+                (() => {
+                  const activeSubscription = getActiveSubscription(
+                    billingData.subscriptions
+                  );
 
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">
-                      {formatCurrency(billingData?.currentPlan.price || 0)}
-                    </span>
-                    <span className="text-muted-foreground">
-                      /{billingData?.currentPlan.billingCycle}
-                    </span>
-                  </div>
+                  if (!activeSubscription) {
+                    return (
+                      <div className="text-center py-6">
+                        <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground mb-4">
+                          No active subscription found
+                        </p>
+                        <Button
+                          onClick={handleUpgradePlan}
+                          className="rounded-xl"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Choose a Plan
+                        </Button>
+                      </div>
+                    );
+                  }
 
-                  {billingData?.currentPlan.nextBillingDate && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      Next billing date:{" "}
-                      {formatDate(billingData.currentPlan.nextBillingDate)}
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-2xl font-bold">
+                            {activeSubscription.plan.name}
+                          </h3>
+                          {getStatusBadge(activeSubscription.status)}
+                        </div>
+
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold">
+                            {formatCurrency(activeSubscription.price)}
+                          </span>
+                          <span className="text-muted-foreground">
+                            /subscription
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            Started: {formatDate(activeSubscription.start_date)}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            Ends: {formatDate(activeSubscription.end_date)}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-medium">Service:</span>
+                            <Badge variant="outline">
+                              {activeSubscription.service}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-medium">Plan Features:</h4>
+                        {activeSubscription.plan.features &&
+                        activeSubscription.plan.features.length > 0 ? (
+                          <ul className="space-y-2">
+                            {activeSubscription.plan.features.map(
+                              (feature, index) => (
+                                <li
+                                  key={index}
+                                  className="flex items-center gap-2 text-sm"
+                                >
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                  {feature}
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                              {activeSubscription.plan.description ||
+                                "No description available"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-
-                  <Button onClick={handleUpgradePlan} className="rounded-xl">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Upgrade Plan
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-medium">Plan Features:</h4>
-                  <ul className="space-y-2">
-                    {billingData?.currentPlan.features.map((feature, index) => (
-                      <li
-                        key={index}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Method */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Payment Method
-              </CardTitle>
-              <CardDescription>Manage your payment information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {billingData?.paymentMethod ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-8 bg-muted rounded flex items-center justify-center">
-                      <CreditCard className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {billingData.paymentMethod.brand} ending in{" "}
-                        {billingData.paymentMethod.last4}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Expires {billingData.paymentMethod.expiryMonth}/
-                        {billingData.paymentMethod.expiryYear}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={handleUpdatePaymentMethod}
-                    className="rounded-xl"
-                  >
-                    Update
-                  </Button>
-                </div>
+                  );
+                })()
               ) : (
-                <div className="text-center py-6">
-                  <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground mb-4">
-                    No payment method on file
-                  </p>
-                  <Button
-                    onClick={handleUpdatePaymentMethod}
-                    className="rounded-xl"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Payment Method
-                  </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-2xl font-bold">
+                        {billingData?.currentPlan.name || "Free Plan"}
+                      </h3>
+                      {getPlanBadge(billingData?.currentPlan.type || "free")}
+                    </div>
+
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">
+                        {formatCurrency(billingData?.currentPlan.price || 0)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        /{billingData?.currentPlan.billingCycle || "month"}
+                      </span>
+                    </div>
+
+                    {billingData?.currentPlan.nextBillingDate && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        Next billing date:{" "}
+                        {formatDate(billingData.currentPlan.nextBillingDate)}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleUpgradePlan}
+                        className="rounded-xl"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Upgrade Plan
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Plan Features:</h4>
+                    <ul className="space-y-2">
+                      {(billingData?.currentPlan.features || []).map(
+                        (feature, index) => (
+                          <li
+                            key={index}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            {feature}
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Billing History */}
+          {/* Credits History */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Billing History
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  Credits Invoice History
+                </div>
               </CardTitle>
-              <CardDescription>
-                View and download your past invoices
-              </CardDescription>
+              <CardDescription>View your credits invoices</CardDescription>
             </CardHeader>
             <CardContent>
-              {billingData?.billingHistory.length ? (
+              {billingData?.creditsInvoices.length ? (
                 <div className="space-y-4">
-                  {billingData.billingHistory.map((invoice) => (
+                  {billingData.creditsInvoices.map((invoice) => (
                     <div
                       key={invoice.id}
                       className="flex items-center justify-between p-4 border rounded-xl"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                          <DollarSign className="h-5 w-5" />
-                        </div>
                         <div>
-                          <p className="font-medium">{invoice.description}</p>
+                          <p className="font-medium">
+                            {invoice.credit?.name || "Credits Top up"} -{" "}
+                            {invoice.quantity} credits
+                          </p>
                           <p className="text-sm text-muted-foreground">
-                            {formatDate(invoice.date)}
+                            {formatDate(invoice.created_at)}
                           </p>
                         </div>
                       </div>
@@ -415,41 +537,59 @@ export default function BillingPage() {
                           {getStatusBadge(invoice.status)}
                         </div>
 
-                        {invoice.invoice_url && invoice.status === "paid" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleDownloadInvoice(invoice.invoice_url!)
-                            }
-                            className="rounded-xl"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex gap-2">
+                          {invoice.payment_url && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  openInvoiceLink(invoice.payment_url)
+                                }
+                                className="rounded-xl"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  copyInvoiceLink(invoice.payment_url)
+                                }
+                                className="rounded-xl"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+
+                          {invoice.status.toLowerCase() === "paid" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleDownloadInvoice(invoice.payment_url)
+                              }
+                              className="rounded-xl"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">
-                    No billing history available
+                  <p className="text-muted-foreground mb-4">
+                    No credits invoices available
                   </p>
                 </div>
               )}
             </CardContent>
           </Card>
-
-          {/* Usage Alert (Optional) */}
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              You're currently using 85% of your monthly quota. Consider
-              upgrading your plan to avoid service interruptions.
-            </AlertDescription>
-          </Alert>
         </div>
       </div>
     </DashboardLayout>
