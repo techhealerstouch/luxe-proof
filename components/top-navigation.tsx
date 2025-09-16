@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,10 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import Credits from "@/components/credits";
+import Credits from "@/components/credits"; // Adjust path as needed
+import IconCompany from "./icon";
+import CreditsWithTopUp from "./CreditsWithTopUp";
+// import Logo from "@/components/logo";
 
 interface TopNavigationProps {
   sidebarOpen: boolean;
@@ -39,45 +43,10 @@ export default function TopNavigation({
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  // State management for credits with localStorage
-  const [userCredits, setUserCredits] = useState(0);
-  const [isClient, setIsClient] = useState(false);
-
-  // Handle client-side hydration and load from localStorage
-  useEffect(() => {
-    setIsClient(true);
-    try {
-      const savedCredits = localStorage.getItem("userCredits");
-      const initialCredits = savedCredits
-        ? parseInt(savedCredits, 10)
-        : user?.credits || 0;
-      setUserCredits(initialCredits);
-    } catch (error) {
-      console.error("Error loading credits from localStorage:", error);
-      setUserCredits(user?.credits || 0);
-    }
-  }, [user?.credits]);
-
-  // Save credits to localStorage whenever it changes
-  useEffect(() => {
-    if (isClient && userCredits >= 0) {
-      try {
-        localStorage.setItem("userCredits", userCredits.toString());
-      } catch (error) {
-        console.error("Error saving credits to localStorage:", error);
-      }
-    }
-  }, [userCredits, isClient]);
+  // State to manage user credits - starts at 0
+  const [userCredits, setUserCredits] = useState(user?.credits || 0);
 
   const handleLogout = () => {
-    // Clear credits from localStorage on logout
-    if (isClient) {
-      try {
-        localStorage.removeItem("userCredits");
-      } catch (error) {
-        console.error("Error clearing localStorage:", error);
-      }
-    }
     logout();
     router.push("/login");
   };
@@ -86,15 +55,18 @@ export default function TopNavigation({
     console.log(
       `Purchased ${packageData.name}: ${packageData.credits} credits`
     );
+    // Update the credits in the TopNavigation state
     setUserCredits((prev) => prev + packageData.credits);
   };
 
   const handlePaymentSuccess = (packageData: any) => {
-    console.log("Payment successful:", packageData);
+    console.log("Payment successful in TopNavigation:", packageData);
+    // This is an additional callback if you need to do other things on success
   };
 
   const handlePaymentError = (error: string) => {
-    console.error("Payment error:", error);
+    console.error("Payment error in TopNavigation:", error);
+    // Handle payment errors (show toast, etc.)
   };
 
   return (
@@ -118,23 +90,12 @@ export default function TopNavigation({
             <Menu className="h-4 w-4" />
           )}
         </Button>
-
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-lg sm:hidden">Luxe Proofs</span>
-        </div>
       </div>
 
       {/* Right Section */}
       <div className="flex items-center gap-3">
-        {/* Credits Component */}
-        <Credits
-          credits={userCredits}
-          onPurchase={handleCreditPurchase}
-          onPaymentSuccess={handlePaymentSuccess}
-          onPaymentError={handlePaymentError}
-          size="md"
-          showTopUpButton={true}
-        />
+        {/* Credits Component with dynamic state */}
+        <CreditsWithTopUp size="sm" showRefresh topUpButtonText="Add Credits" />
 
         {/* User Menu */}
         <DropdownMenu>

@@ -24,6 +24,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
   Shield,
   AlertTriangle,
   Eye,
@@ -36,8 +45,16 @@ import {
   Clock,
   Coins,
   CreditCard,
+  Smartphone,
+  Building2,
+  Wallet,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
+import CreditsDisplay from "@/components/CreditsDisplay";
+import TopUp from "@/components/TopUp";
+import ApiCreditStatus from "@/components/ApiCreditStatus";
 
 interface DashboardStats {
   totalAuthentications: number;
@@ -72,6 +89,87 @@ interface TopBrand {
   revenue: number;
 }
 
+// Credits types
+interface Package {
+  id: string;
+  name: string;
+  credits: number;
+  price: number;
+  popular: boolean;
+  discount?: number;
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  type: string;
+  icon: any;
+  description: string;
+  enabled: boolean;
+}
+
+// Credits constants
+const DEFAULT_PACKAGES: Package[] = [
+  {
+    id: "starter",
+    name: "Starter Package",
+    credits: 1000,
+    price: 1000,
+    popular: false,
+  },
+  {
+    id: "basic",
+    name: "Basic Package",
+    credits: 5000,
+    price: 4500,
+    popular: true,
+    discount: 10,
+  },
+  {
+    id: "standard",
+    name: "Standard Package",
+    credits: 10000,
+    price: 8500,
+    popular: false,
+    discount: 15,
+  },
+];
+
+const PAYMENT_METHODS: PaymentMethod[] = [
+  {
+    id: "cards",
+    name: "Credit/Debit Card",
+    type: "CREDIT_CARD",
+    icon: CreditCard,
+    description: "Visa, Mastercard, JCB, AMEX",
+    enabled: true,
+  },
+  {
+    id: "ewallet",
+    name: "E-Wallet",
+    type: "EWALLET",
+    icon: Smartphone,
+    description: "GCash, PayMaya, GrabPay",
+    enabled: true,
+  },
+  {
+    id: "bank_transfer",
+    name: "Bank Transfer",
+    type: "BANK_TRANSFER",
+    icon: Building2,
+    description: "Online Banking, ATM",
+    enabled: true,
+  },
+  {
+    id: "qr_code",
+    name: "QR Code",
+    type: "QR_CODE",
+    icon: Wallet,
+    description: "Scan to pay",
+    enabled: true,
+  },
+];
+
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -82,10 +180,20 @@ export default function DashboardPage() {
   const [topBrands, setTopBrands] = useState<TopBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Credits state
   const [userCredits, setUserCredits] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [topUpDialogOpen, setTopUpDialogOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    string | null
+  >(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // Get current credits from localStorage
+  // Credits utility functions
   const getCurrentCredits = (): number => {
     try {
       const savedCredits = localStorage.getItem("userCredits");
@@ -96,43 +204,10 @@ export default function DashboardPage() {
     }
   };
 
-  // Update credits state when component mounts and periodically
-  useEffect(() => {
-    setIsClient(true);
-    const updateCredits = () => {
-      const credits = getCurrentCredits();
-      setUserCredits(credits);
-    };
-
-    updateCredits();
-
-    // Update credits every 5 seconds to catch changes from other components
-    const interval = setInterval(updateCredits, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Format time ago helper
-  const formatTimeAgo = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffDays > 0) {
-      return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-    } else if (diffHours > 0) {
-      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
-    } else {
-      return "Just now";
-    }
+  const saveCredits = (credits: number): void => {
+    localStorage.setItem("userCredits", credits.toString());
   };
 
-  // Get credit status
   const getCreditStatus = (credits: number) => {
     if (credits === 0) {
       return {
@@ -165,9 +240,126 @@ export default function DashboardPage() {
     }
   };
 
-  // Calculate authentication capacity
   const getAuthenticationCapacity = (credits: number) => {
     return Math.floor(credits / 1000);
+  };
+
+  const formatPrice = (price: number, discount?: number) => {
+    if (discount) {
+      const discountedPrice = price * (1 - discount / 100);
+      return {
+        original: price,
+        discounted: discountedPrice,
+        savings: price - discountedPrice,
+      };
+    }
+    return { original: price };
+  };
+
+  // Credits handlers
+  const handlePackageSelect = (packageId: string): void => {
+    setSelectedPackage(packageId);
+    setPaymentError(null);
+  };
+
+  const handlePaymentMethodSelect = (methodId: string): void => {
+    setSelectedPaymentMethod(methodId);
+    setPaymentError(null);
+  };
+
+  const simulatePayment = async (packageData: Package) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const success = Math.random() > 0.1;
+        resolve(
+          success
+            ? { success: true }
+            : {
+                success: false,
+                error: "Payment was declined. Please try again.",
+              }
+        );
+      }, 2000);
+    });
+  };
+
+  const handleProceedToPayment = async (): Promise<void> => {
+    if (!selectedPackage || !selectedPaymentMethod) {
+      setPaymentError("Please select a package and payment method");
+      return;
+    }
+
+    const packageData = DEFAULT_PACKAGES.find(
+      (pkg) => pkg.id === selectedPackage
+    );
+    if (!packageData) {
+      setPaymentError("Invalid package selected");
+      return;
+    }
+
+    setProcessingPayment(true);
+    setPaymentError(null);
+
+    try {
+      const result: any = await simulatePayment(packageData);
+
+      if (result.success) {
+        const newCredits = userCredits + packageData.credits;
+        setUserCredits(newCredits);
+        saveCredits(newCredits);
+        setPaymentSuccess(true);
+
+        // Trigger custom event for same-window updates
+        window.dispatchEvent(new Event("storage-update"));
+
+        setTimeout(() => {
+          handleDialogClose();
+        }, 2000);
+      } else {
+        throw new Error(result.error || "Payment failed");
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Payment processing failed";
+      setPaymentError(errorMessage);
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  const handleDialogClose = (): void => {
+    if (!processingPayment) {
+      setTopUpDialogOpen(false);
+      resetDialog();
+    }
+  };
+
+  const resetDialog = (): void => {
+    setSelectedPackage(null);
+    setSelectedPaymentMethod(null);
+    setPaymentError(null);
+    setPaymentSuccess(false);
+    setProcessingPayment(false);
+  };
+
+  // Format time ago helper
+  const formatTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
+    } else {
+      return "Just now";
+    }
   };
 
   // Get status badge
@@ -231,6 +423,97 @@ export default function DashboardPage() {
     );
   };
 
+  // Credits render functions
+  const renderPackageCard = (pkg: Package): React.ReactElement => {
+    const pricing = formatPrice(pkg.price, pkg.discount);
+    const isSelected = selectedPackage === pkg.id;
+
+    return (
+      <div
+        key={pkg.id}
+        className={`relative flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+          isSelected
+            ? "border-blue-500 bg-blue-50 shadow-md"
+            : "border-gray-200 hover:border-blue-300 hover:shadow-sm"
+        } ${pkg.popular && !isSelected ? "border-blue-200 bg-blue-25" : ""}`}
+        onClick={() => handlePackageSelect(pkg.id)}
+      >
+        {pkg.popular && (
+          <Badge className="absolute -top-2 right-2 text-xs bg-blue-500">
+            Popular
+          </Badge>
+        )}
+        {pkg.discount && (
+          <Badge variant="secondary" className="absolute -top-2 left-2 text-xs">
+            {pkg.discount}% OFF
+          </Badge>
+        )}
+
+        <div>
+          <h4 className="font-semibold text-gray-900">{pkg.name}</h4>
+          <div className="space-y-1">
+            <p className="text-sm text-gray-600 flex items-center gap-1">
+              <Coins className="h-3 w-3" />
+              {pkg.credits.toLocaleString()} credits
+            </p>
+            <p className="text-xs text-blue-600 font-medium">
+              {getAuthenticationCapacity(pkg.credits)} authentication
+              {getAuthenticationCapacity(pkg.credits) !== 1 ? "s" : ""}
+            </p>
+          </div>
+          {pkg.discount && pricing.savings && (
+            <p className="text-xs text-green-600 font-medium">
+              Save ${pricing.savings}
+            </p>
+          )}
+        </div>
+
+        <div className="text-right">
+          <div className="flex items-center gap-2">
+            {pricing.discounted && (
+              <span className="text-sm text-gray-500 line-through">
+                ${pricing.original}
+              </span>
+            )}
+            <div className="font-semibold text-lg">
+              ${pricing.discounted || pricing.original}
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            $
+            {((pricing.discounted || pricing.original) / pkg.credits).toFixed(
+              2
+            )}
+            /credit
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPaymentMethod = (method: PaymentMethod): React.ReactElement => {
+    const IconComponent = method.icon;
+    const isSelected = selectedPaymentMethod === method.id;
+
+    return (
+      <div
+        key={method.id}
+        className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+          isSelected
+            ? "border-blue-500 bg-blue-50 shadow-sm"
+            : "border-gray-200 hover:border-blue-300"
+        }`}
+        onClick={() => handlePaymentMethodSelect(method.id)}
+      >
+        <IconComponent className="h-5 w-5 text-gray-600" />
+        <div className="flex-1">
+          <div className="font-medium text-gray-900">{method.name}</div>
+          <div className="text-sm text-gray-600">{method.description}</div>
+        </div>
+      </div>
+    );
+  };
+
   // Fetch dashboard data
   const fetchDashboardData = async (showLoader = true) => {
     try {
@@ -290,21 +573,23 @@ export default function DashboardPage() {
 
         if (recentResponse.ok) {
           const recentData = await recentResponse.json();
+
           const mappedData = Array.isArray(recentData.data)
             ? recentData.data
                 .sort((a: any, b: any) => {
+                  // Sort by created_at in descending order (most recent first)
                   const dateA = new Date(a.created_at || 0).getTime();
                   const dateB = new Date(b.created_at || 0).getTime();
                   return dateB - dateA;
                 })
-                .slice(0, 5)
+                .slice(0, 5) // Limit to 5 most recent
                 .map((item: any) => ({
                   id: item.id,
                   name: item.client_name || item.name || "Unknown Client",
                   client_name: item.client_name,
                   brand: item.brand,
                   model: item.model,
-                  serial_number: item.serial_number,
+                  serial_number: item.serial_info.serial_number,
                   estimated_production_year: item.estimated_production_year,
                   authenticity_verdict: item.authenticity_verdict,
                   status: item.status || "completed",
@@ -353,13 +638,21 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-    }).format(amount || 0);
-  };
+  // Update credits state when component mounts and periodically
+  useEffect(() => {
+    setIsClient(true);
+    const updateCredits = () => {
+      const credits = getCurrentCredits();
+      setUserCredits(credits);
+    };
+
+    updateCredits();
+
+    // Update credits every 5 seconds to catch changes from other components
+    const interval = setInterval(updateCredits, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const creditStatus = getCreditStatus(userCredits);
   const authCapacity = getAuthenticationCapacity(userCredits);
@@ -468,7 +761,11 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => setTopUpDialogOpen(true)}
+                  >
                     <CreditCard className="w-4 h-4 mr-2" />
                     Top Up Credits
                   </Button>
@@ -477,8 +774,7 @@ export default function DashboardPage() {
             </Card>
           )}
 
-        {/* Key Metrics */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -492,24 +788,6 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Lifetime authentications
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Available Credits
-              </CardTitle>
-              <Coins className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {userCredits.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {authCapacity} authentication{authCapacity !== 1 ? "s" : ""}{" "}
-                possible
               </p>
             </CardContent>
           </Card>
@@ -541,42 +819,32 @@ export default function DashboardPage() {
               <CardDescription>Your current credit status</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Display actual credits from API */}
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Current Balance</p>
-                  <p className="text-2xl font-bold">
-                    {userCredits.toLocaleString()}
-                  </p>
+                  <CreditsDisplay
+                    size="lg"
+                    showRefresh={true}
+                    className="mt-2"
+                  />
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-muted-foreground">
-                    Authentications Possible
-                  </p>
-                  <p className="text-lg font-semibold">{authCapacity}</p>
+                  <p className="text-sm text-muted-foreground">Quick Actions</p>
+                  <div className="mt-2">
+                    <TopUp
+                      buttonText="Top Up"
+                      buttonVariant="outline"
+                      buttonSize="sm"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className={`border rounded-lg p-3 ${creditStatus.bgColor}`}>
-                <p className={`text-sm font-medium ${creditStatus.color}`}>
-                  Status: {creditStatus.message}
-                </p>
-                {creditStatus.status !== "good" && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Each authentication costs 1000 credits
-                  </p>
-                )}
-              </div>
-
-              {(creditStatus.status === "empty" ||
-                creditStatus.status === "low") && (
-                <Button className="w-full" size="sm">
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Purchase Credits
-                </Button>
-              )}
+              {/* Status indicator based on fetched credits */}
+              <ApiCreditStatus />
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -605,10 +873,6 @@ export default function DashboardPage() {
                   <Eye className="w-4 h-4 mr-2" />
                   View All Cases
                 </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <CreditCard className="w-4 h-4 mr-2" />
-                Manage Credits
               </Button>
             </CardContent>
           </Card>
@@ -810,14 +1074,6 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">
-                          {formatCurrency(brand.revenue)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatCurrency(brand.revenue / brand.count)} avg
-                        </p>
-                      </div>
                     </div>
                   ))}
                 </div>
@@ -832,6 +1088,112 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Credits Top Up Dialog */}
+        <Dialog open={topUpDialogOpen} onOpenChange={setTopUpDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {paymentSuccess ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <CreditCard className="h-5 w-5" />
+                )}
+                {paymentSuccess ? "Payment Successful!" : "Top Up Credits"}
+              </DialogTitle>
+              <DialogDescription>
+                {paymentSuccess ? (
+                  `Your new credit balance is ${userCredits.toLocaleString()} credits.`
+                ) : (
+                  <>
+                    Choose a credit package and payment method. Current balance:{" "}
+                    <strong>{userCredits.toLocaleString()} credits</strong> (
+                    {getAuthenticationCapacity(userCredits)} authentication
+                    {getAuthenticationCapacity(userCredits) !== 1 ? "s" : ""})
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            {paymentSuccess && (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  Payment completed successfully! Your credits have been added.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {paymentError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{paymentError}</AlertDescription>
+              </Alert>
+            )}
+
+            {!paymentSuccess && (
+              <div className="space-y-6 py-4 max-h-96 overflow-y-auto">
+                {/* Package Selection */}
+                <div>
+                  <h4 className="font-medium mb-3">Select Package</h4>
+                  <div className="grid gap-3">
+                    {DEFAULT_PACKAGES.map(renderPackageCard)}
+                  </div>
+                </div>
+
+                {/* Payment Method Selection */}
+                {selectedPackage && (
+                  <div>
+                    <h4 className="font-medium mb-3">Select Payment Method</h4>
+                    <div className="grid gap-2">
+                      {PAYMENT_METHODS.filter((method) => method.enabled).map(
+                        renderPaymentMethod
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              {!paymentSuccess ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleDialogClose}
+                    disabled={processingPayment}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    disabled={
+                      !selectedPackage ||
+                      !selectedPaymentMethod ||
+                      processingPayment
+                    }
+                    onClick={handleProceedToPayment}
+                  >
+                    {processingPayment ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Processing...
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Complete Payment
+                      </div>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={handleDialogClose} className="w-full">
+                  Close
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

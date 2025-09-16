@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from "react";
+// components/TopUp.tsx
+import React, { useState } from "react";
 import {
   Plus,
-  Coins,
   CreditCard,
   CheckCircle,
   AlertCircle,
   ExternalLink,
+  Coins,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,152 +20,144 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/components/auth-provider";
-import {
-  fetchCredits,
-  createInvoice,
-  formatCurrency,
-  getAuthenticationCount,
-  DEFAULT_PACKAGES,
-  type Package,
-} from "@/lib/credit-service";
+import { useCredits } from "@/hooks/use-credits";
+import axios from "axios";
 
-interface CreditsProps {
-  showTopUpButton?: boolean;
-  size?: "sm" | "md" | "lg";
-  variant?: "default" | "secondary" | "destructive" | "outline";
-  onCreditsUpdate?: (credits: number) => void;
+interface Package {
+  id: string;
+  name: string;
+  credits: number;
+  price: number;
+  popular?: boolean;
 }
 
-// Main Credits Component
-const Credits: React.FC<CreditsProps> = ({
-  showTopUpButton = true,
-  size = "md",
-  variant,
-  onCreditsUpdate,
-}) => {
-  const { user } = useAuth();
-  const [credits, setCredits] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+interface TopUpProps {
+  buttonText?: string;
+  buttonVariant?: "default" | "outline" | "ghost" | "secondary";
+  buttonSize?: "sm" | "md" | "lg";
+  packages?: Package[];
+  className?: string;
+}
 
-  // Load credits on mount
-  useEffect(() => {
-    loadCredits();
-  }, []);
+const DEFAULT_PACKAGES: Package[] = [
+  { id: "starter", name: "Starter Package", credits: 1000, price: 1000 },
+  {
+    id: "basic",
+    name: "Basic Package",
+    credits: 5000,
+    price: 5000,
+    popular: true,
+  },
+  { id: "standard", name: "Standard Package", credits: 10000, price: 10000 },
+];
 
-  const loadCredits = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const fetchedCredits = await fetchCredits();
-      setCredits(fetchedCredits);
-      onCreditsUpdate?.(fetchedCredits);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load credits");
-    } finally {
-      setLoading(false);
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const getAuthenticationCount = (credits: number): number =>
+  Math.floor(credits / 1000);
+
+const createInvoice = async (
+  userId: string,
+  packageData: Package
+): Promise<string> => {
+  const token = localStorage.getItem("accessToken");
+
+  try {
+    const response = await axios.post(
+      `http://localhost:8000/api/authenticator/top-up`,
+      {
+        user_id: userId,
+        package: packageData.name,
+        credits: packageData.credits,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.data.success && response.data.invoice_url) {
+      return response.data.invoice_url;
     }
-  };
-
-  const getBadgeVariant = () => {
-    if (variant) return variant;
-    if (credits < 1000) return "destructive";
-    if (credits < 5000) return "secondary";
-    return "default";
-  };
-
-  const getSizeClasses = () => {
-    const classes = {
-      sm: {
-        badge: "text-xs px-2 py-1",
-        button: "px-3 py-1.5 text-sm",
-        icon: "h-3 w-3",
-      },
-      md: {
-        badge: "text-sm px-2.5 py-1.5",
-        button: "px-4 py-2",
-        icon: "h-4 w-4",
-      },
-      lg: {
-        badge: "text-base px-3 py-2",
-        button: "px-6 py-3 text-lg",
-        icon: "h-5 w-5",
-      },
-    };
-    return classes[size];
-  };
-
-  const sizeClasses = getSizeClasses();
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2">
-        <Badge
-          variant="outline"
-          className={`flex items-center gap-1 ${sizeClasses.badge}`}
-        >
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          Loading...
-        </Badge>
-      </div>
-    );
+    throw new Error(response.data.message || "Failed to create invoice");
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        throw new Error(
+          error.response.data?.message ||
+            `Server error: ${error.response.status}`
+        );
+      } else if (error.request) {
+        throw new Error("Network error. Please check your connection.");
+      }
+    }
+    throw error;
   }
+};
 
-  if (error) {
-    return (
-      <div className="flex items-center gap-2">
-        <Badge
-          variant="destructive"
-          className={`flex items-center gap-1 ${sizeClasses.badge}`}
-        >
-          <AlertCircle className={sizeClasses.icon} />
-          Error
-        </Badge>
-        {showTopUpButton && (
-          <Button variant="outline" size="sm" onClick={loadCredits}>
-            Retry
-          </Button>
-        )}
-      </div>
-    );
-  }
-
+const PackageCard: React.FC<{
+  package: Package;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+}> = ({ package: pkg, isSelected, onSelect }) => {
   return (
-    <div className="flex items-center gap-2">
-      <Badge
-        variant={getBadgeVariant()}
-        className={`flex items-center gap-1 ${sizeClasses.badge}`}
-      >
-        <Coins className={sizeClasses.icon} />
-        {credits.toLocaleString()} credits
-      </Badge>
-
-      {showTopUpButton && (
-        <TopUpDialog
-          currentCredits={credits}
-          onSuccess={loadCredits}
-          size={size}
-          userId={user?.id}
-        />
+    <div
+      className={`relative flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+        isSelected
+          ? "border-blue-500 bg-blue-50 shadow-md"
+          : "border-gray-200 hover:border-blue-300 hover:shadow-sm"
+      } ${pkg.popular && !isSelected ? "border-blue-200" : ""}`}
+      onClick={() => onSelect(pkg.id)}
+    >
+      {pkg.popular && (
+        <Badge className="absolute -top-2 right-2 text-xs bg-blue-500">
+          Popular
+        </Badge>
       )}
+
+      <div>
+        <h4 className="font-semibold text-gray-900">{pkg.name}</h4>
+        <div className="space-y-1">
+          <p className="text-sm text-gray-600 flex items-center gap-1">
+            <Coins className="h-3 w-3" />
+            {pkg.credits.toLocaleString()} credits
+          </p>
+          <p className="text-xs text-blue-600 font-medium">
+            {getAuthenticationCount(pkg.credits)} authentication
+            {getAuthenticationCount(pkg.credits) !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+
+      <div className="text-right">
+        <div className="font-semibold text-lg">{formatCurrency(pkg.price)}</div>
+        <div className="text-xs text-gray-500">
+          ₱{(pkg.price / pkg.credits).toFixed(2)}/credit
+        </div>
+      </div>
     </div>
   );
 };
 
-// Top-up Dialog Component
-interface TopUpDialogProps {
-  currentCredits: number;
-  onSuccess: () => void;
-  size: "sm" | "md" | "lg";
-  userId?: string;
-}
-
-const TopUpDialog: React.FC<TopUpDialogProps> = ({
-  currentCredits,
-  onSuccess,
-  size,
-  userId,
+const TopUp: React.FC<TopUpProps> = ({
+  buttonText = "Top Up",
+  buttonVariant = "outline",
+  buttonSize = "sm",
+  packages = DEFAULT_PACKAGES,
+  className = "",
 }) => {
+  const { user } = useAuth();
+  const { credits, refetch } = useCredits();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -172,21 +165,13 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({
   const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  const sizeClasses = {
-    sm: { button: "px-3 py-1.5 text-sm", icon: "h-3 w-3" },
-    md: { button: "px-4 py-2", icon: "h-4 w-4" },
-    lg: { button: "px-6 py-3 text-lg", icon: "h-5 w-5" },
-  }[size];
-
   const handleProceedToPayment = async () => {
-    if (!selectedPackage || !userId) {
+    if (!selectedPackage || !user?.id) {
       setError("Please select a package");
       return;
     }
 
-    const packageData = DEFAULT_PACKAGES.find(
-      (pkg) => pkg.id === selectedPackage
-    );
+    const packageData = packages.find((pkg) => pkg.id === selectedPackage);
     if (!packageData) {
       setError("Invalid package selected");
       return;
@@ -196,8 +181,8 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({
     setError(null);
 
     try {
-      const invoiceUrl = await createInvoice(userId, packageData);
-      setInvoiceUrl(invoiceUrl);
+      const url = await createInvoice(user.id, packageData);
+      setInvoiceUrl(url);
 
       // Auto-redirect after 2 seconds
       setTimeout(() => {
@@ -220,7 +205,7 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({
       setTimeout(() => {
         setIsRedirecting(false);
         handleClose();
-        onSuccess();
+        refetch(); // Refresh credits after successful payment
       }, 1000);
     }
   };
@@ -236,15 +221,14 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({
   };
 
   return (
-    <>
+    <div className={className}>
       <Button
-        variant="outline"
-        size="sm"
-        className={sizeClasses.button}
+        variant={buttonVariant}
         onClick={() => setIsOpen(true)}
+        className="flex items-center gap-2"
       >
-        <Plus className={`${sizeClasses.icon} mr-1`} />
-        <span className="hidden sm:inline">Top Up</span>
+        <Plus className="h-4 w-4" />
+        {buttonText}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -264,9 +248,9 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({
               ) : (
                 <>
                   Current balance:{" "}
-                  <strong>{currentCredits.toLocaleString()} credits</strong> (
-                  {getAuthenticationCount(currentCredits)} authentication
-                  {getAuthenticationCount(currentCredits) !== 1 ? "s" : ""})
+                  <strong>{credits.toLocaleString()} credits</strong> (
+                  {getAuthenticationCount(credits)} authentication
+                  {getAuthenticationCount(credits) !== 1 ? "s" : ""})
                 </>
               )}
             </DialogDescription>
@@ -295,7 +279,7 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({
             <div className="space-y-4 py-4">
               <h4 className="font-medium">Select Package</h4>
               <div className="grid gap-3">
-                {DEFAULT_PACKAGES.map((pkg) => (
+                {packages.map((pkg) => (
                   <PackageCard
                     key={pkg.id}
                     package={pkg}
@@ -366,59 +350,8 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
-  );
-};
-
-// Package Card Component
-interface PackageCardProps {
-  package: Package;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-}
-
-const PackageCard: React.FC<PackageCardProps> = ({
-  package: pkg,
-  isSelected,
-  onSelect,
-}) => {
-  return (
-    <div
-      className={`relative flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
-        isSelected
-          ? "border-blue-500 bg-blue-50 shadow-md"
-          : "border-gray-200 hover:border-blue-300 hover:shadow-sm"
-      } ${pkg.popular && !isSelected ? "border-blue-200 bg-blue-25" : ""}`}
-      onClick={() => onSelect(pkg.id)}
-    >
-      {pkg.popular && (
-        <Badge className="absolute -top-2 right-2 text-xs bg-blue-500">
-          Popular
-        </Badge>
-      )}
-
-      <div>
-        <h4 className="font-semibold text-gray-900">{pkg.name}</h4>
-        <div className="space-y-1">
-          <p className="text-sm text-gray-600 flex items-center gap-1">
-            <Coins className="h-3 w-3" />
-            {pkg.credits.toLocaleString()} credits
-          </p>
-          <p className="text-xs text-blue-600 font-medium">
-            {getAuthenticationCount(pkg.credits)} authentication
-            {getAuthenticationCount(pkg.credits) !== 1 ? "s" : ""}
-          </p>
-        </div>
-      </div>
-
-      <div className="text-right">
-        <div className="font-semibold text-lg">{formatCurrency(pkg.price)}</div>
-        <div className="text-xs text-gray-500">
-          ₱{(pkg.price / pkg.credits).toFixed(2)}/credit
-        </div>
-      </div>
     </div>
   );
 };
 
-export default Credits;
+export default TopUp;

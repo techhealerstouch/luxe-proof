@@ -17,8 +17,49 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { User, Lock, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import { z } from "zod";
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+// GMT-based timezone options
+const timezoneOptions = [
+  { value: "UTC", label: "GMT+0 (UTC)" },
+  { value: "Pacific/Midway", label: "GMT-11 (Midway Island)" },
+  { value: "Pacific/Honolulu", label: "GMT-10 (Hawaii)" },
+  { value: "America/Anchorage", label: "GMT-9 (Alaska)" },
+  { value: "America/Los_Angeles", label: "GMT-8 (Pacific Time)" },
+  { value: "America/Denver", label: "GMT-7 (Mountain Time)" },
+  { value: "America/Chicago", label: "GMT-6 (Central Time)" },
+  { value: "America/New_York", label: "GMT-5 (Eastern Time)" },
+  { value: "America/Caracas", label: "GMT-4 (Venezuela)" },
+  { value: "America/Sao_Paulo", label: "GMT-3 (Brazil)" },
+  { value: "Atlantic/South_Georgia", label: "GMT-2 (South Georgia)" },
+  { value: "Atlantic/Azores", label: "GMT-1 (Azores)" },
+  { value: "Europe/London", label: "GMT+0 (London)" },
+  { value: "Europe/Paris", label: "GMT+1 (Central European Time)" },
+  { value: "Europe/Athens", label: "GMT+2 (Eastern European Time)" },
+  { value: "Europe/Moscow", label: "GMT+3 (Moscow)" },
+  { value: "Asia/Dubai", label: "GMT+4 (Dubai)" },
+  { value: "Asia/Karachi", label: "GMT+5 (Pakistan)" },
+  { value: "Asia/Kolkata", label: "GMT+5:30 (India)" },
+  { value: "Asia/Dhaka", label: "GMT+6 (Bangladesh)" },
+  { value: "Asia/Bangkok", label: "GMT+7 (Thailand)" },
+  { value: "Asia/Shanghai", label: "GMT+8 (China/Philippines)" },
+  { value: "Asia/Tokyo", label: "GMT+9 (Japan)" },
+  { value: "Australia/Sydney", label: "GMT+10 (Australia East)" },
+  { value: "Pacific/Noumea", label: "GMT+11 (New Caledonia)" },
+  { value: "Pacific/Auckland", label: "GMT+12 (New Zealand)" },
+];
 
 // ============================================================================
 // Schemas
@@ -27,7 +68,9 @@ import { z } from "zod";
 const profileSchema = z.object({
   name: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
-  businessName: z.string().optional(),
+  phone_number: z.string().optional(),
+  timezone: z.string().min(1, "Timezone is required"),
+  businessName: z.string().min(1, "Account name is required"),
   businessSlug: z.string().optional(),
 });
 
@@ -55,6 +98,8 @@ type MessageType = {
 
 type FormData = {
   name: string;
+  phone_number: string;
+  timezone: string;
   businessName: string;
   businessSlug: string;
   email: string;
@@ -128,6 +173,8 @@ export default function ProfilePage() {
   // Form state
   const [formData, setFormData] = useState<FormData>({
     name: "",
+    phone_number: "",
+    timezone: "",
     businessName: "",
     businessSlug: "",
     email: "",
@@ -146,29 +193,40 @@ export default function ProfilePage() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false); // Add this line
   const [passwordVisibility, setPasswordVisibility] = useState({
     current: false,
     new: false,
     confirm: false,
   });
 
-  // Initialize form data
+  // Initialize form data when user data is available
   useEffect(() => {
     if (!user) {
       router.push("/login");
       return;
     }
 
-    setFormData({
+    setFormData((prevFormData) => ({
+      ...prevFormData,
       name: user?.name || "",
       email: user?.email || "",
+      phone_number: user?.phone_number || "",
+      timezone: user?.timezone || "",
       businessName: user?.account?.name || "",
       businessSlug: user?.account?.slug || "",
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+    }));
+
+    // Mark as initialized after setting form data
+    setIsInitialized(true);
+
+    console.log("User timezone:", user?.timezone);
   }, [user, router]);
+
+  // Debug useEffect to see when formData changes
+  useEffect(() => {
+    console.log("formData.timezone updated to:", formData.timezone);
+  }, [formData.timezone]);
 
   // Memoized values
   const passwordRequirements = useMemo(
@@ -191,6 +249,7 @@ export default function ProfilePage() {
   // Form handlers
   const updateFormField = useCallback(
     (field: keyof FormData, value: string) => {
+      console.log(`Updating ${field} to:`, value); // Debug log
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
     []
@@ -228,6 +287,8 @@ export default function ProfilePage() {
       await updateUser({
         name: formData.name,
         email: formData.email,
+        phone_number: formData.phone_number,
+        timezone: formData.timezone,
         businessName: formData.businessName,
         businessSlug: formData.businessSlug,
       });
@@ -359,7 +420,61 @@ export default function ProfilePage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="businessName">Business Name</Label>
+                      <Label htmlFor="phone_number">
+                        Phone Number (Optional)
+                      </Label>
+                      <Input
+                        id="phone_number"
+                        type="tel"
+                        className="rounded-xl"
+                        value={formData.phone_number}
+                        onChange={(e) =>
+                          updateFormField("phone_number", e.target.value)
+                        }
+                        placeholder="Your phone number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone">Timezone</Label>
+                      {/* Only render Select when initialized */}
+                      {isInitialized ? (
+                        <Select
+                          value={formData.timezone}
+                          onValueChange={(value) => {
+                            console.log(
+                              "Select onValueChange called with:",
+                              value
+                            );
+                            if (value && value !== formData.timezone) {
+                              updateFormField("timezone", value);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Select your timezone" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {timezoneOptions.map((timezone) => (
+                              <SelectItem
+                                key={timezone.value}
+                                value={timezone.value}
+                              >
+                                {timezone.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm text-muted-foreground flex items-center">
+                          Loading timezone...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="businessName">Account Name</Label>
                       <Input
                         id="businessName"
                         type="text"
@@ -368,6 +483,7 @@ export default function ProfilePage() {
                         onChange={(e) =>
                           updateFormField("businessName", e.target.value)
                         }
+                        placeholder="Your account name"
                       />
                     </div>
                     <div className="space-y-2">
@@ -380,6 +496,7 @@ export default function ProfilePage() {
                         onChange={(e) =>
                           updateFormField("businessSlug", e.target.value)
                         }
+                        placeholder="Your business slug"
                       />
                     </div>
                   </div>

@@ -29,7 +29,6 @@ type FormValues = {
   email: string;
   phone: string;
   contact_method: string;
-
   // Step 2 fields
   serial_number: string;
   model_number: string;

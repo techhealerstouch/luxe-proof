@@ -23,20 +23,23 @@ interface TokenResponse {
 }
 
 interface Account {
+  id: string;
   name: string;
   slug: string;
 }
 
 interface User {
+  id: string;
   name: string;
   email: string;
   role: string;
+  timezone: string;
+  phone_number: string;
   businessName?: string;
   businessSlug?: string;
   password?: string;
   password_confirmation?: string;
   credits?: number; // Add this line
-
   account: Account;
 }
 
@@ -267,9 +270,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No auth token found");
       }
 
+      console.log(userData);
       const payload = {
         name: userData.name,
         email: userData.email,
+        phone_number: userData.phone_number,
+        timezone: userData.timezone,
         account: {
           name: userData.businessName,
           slug: userData.businessSlug,
