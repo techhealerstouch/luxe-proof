@@ -25,7 +25,6 @@ import { AlertCircle } from "lucide-react";
 
 import Logo from "@/components/logo";
 
-
 // PKCE Helpers
 function base64UrlEncode(buffer: Uint8Array) {
   return btoa(String.fromCharCode(...buffer))
@@ -67,7 +66,6 @@ export default function LoginPage() {
           break;
         case "auth_failed":
           setError("Authentication failed. Please check your credentials.");
-          
           break;
         default:
           setError("An error occurred. Please try again.");
@@ -80,7 +78,6 @@ export default function LoginPage() {
       router.push(from);
     }
   }, [user, isLoading, router, searchParams]);
-
 
   const redirectToOAuth = async () => {
     setIsRedirecting(true);

@@ -36,10 +36,45 @@ const createCertificateHTML = (watchData: WatchAuthentication): string => {
       </style>
     </head>
     <body>
-      <div class="certificate">
+      <div class="certificate page-1">
         ${createHeader(watchData)}
         ${createMainContent(watchData)}
         ${createFooter(watchData)}
+      </div>
+      <div class="certificate page-2">
+        ${createPageHeader("Serial Information")}
+        ${createSerialInformationContent(watchData)}
+        ${createPageFooter("Serial Information - Page 2")}
+      </div>
+      <div class="certificate page-3">
+        ${createPageHeader("Case, Bezel, and Crystal Analysis")}
+        ${createCaseBezelCrystalContent(watchData)}
+        ${createPageFooter("Case Analysis - Page 3")}
+      </div>
+      <div class="certificate page-4">
+        ${createPageHeader("Dial, Hands, and Date Scrutiny")}
+        ${createDialHandsDateContent(watchData)}
+        ${createPageFooter("Dial Analysis - Page 4")}
+      </div>
+      <div class="certificate page-5">
+        ${createPageHeader("Bracelet/Strap and Clasp Inspection")}
+        ${createBraceletClaspContent(watchData)}
+        ${createPageFooter("Bracelet Analysis - Page 5")}
+      </div>
+      <div class="certificate page-6">
+        ${createPageHeader("Movement Examination")}
+        ${createMovementContent(watchData)}
+        ${createPageFooter("Movement Analysis - Page 6")}
+      </div>
+      <div class="certificate page-7">
+        ${createPageHeader("Performance & Function Test")}
+        ${createPerformanceContent(watchData)}
+        ${createPageFooter("Performance Analysis - Page 7")}
+      </div>
+      <div class="certificate page-8">
+        ${createPageHeader("Final Condition & Grading")}
+        ${createFinalConditionContent(watchData)}
+        ${createPageFooter("Final Report - Page 8")}
       </div>
     </body>
     </html>
@@ -75,7 +110,17 @@ const getCertificateStyles = (): string => `
     border: 2px solid #233252;
     margin:5px;
     overflow: hidden;
-   
+    page-break-after: always;
+  }
+  
+  .certificate.page-2,
+  .certificate.page-3,
+  .certificate.page-4,
+  .certificate.page-5,
+  .certificate.page-6,
+  .certificate.page-7,
+  .certificate.page-8 {
+    page-break-before: always;
   }
   
   .header {
@@ -143,7 +188,7 @@ const getCertificateStyles = (): string => `
   
   .report-meta {
     display: flex;
-    padding: 1rem 2rem;
+    padding: 5px 2rem;
       flex-shrink: 0;
       justify-content: space-between;
        margin: 0 30px;
@@ -154,16 +199,14 @@ const getCertificateStyles = (): string => `
   }
   
   .meta-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 0.25rem;
   }
   
   .meta-value {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 700;
     color: #1e2d4e;
   }
@@ -234,8 +277,7 @@ const getCertificateStyles = (): string => `
     display: flex;
     align-items: center;
     justify-content: center;
-   
-    margin-bottom: 1rem;
+    margin-bottom: 5px;
   }
   .image-placeholder p {
     margin-bottom:10px;
@@ -305,6 +347,128 @@ const getCertificateStyles = (): string => `
     overflow:hidden;
   }
   
+  /* Page header styles for pages 2-8 */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 2px solid #233252;
+    margin: 0 30px;
+    flex-shrink: 0;
+  }
+  
+  .page-logo {
+    height: 60px;
+    flex-shrink: 0;
+  }
+  
+  .page-title-container {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e3a8a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.25rem;
+  }
+  
+  .page-subtitle {
+    font-size: 12px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Content area styles for pages 2-8 */
+  .page-content {
+    flex: 1;
+    padding: 2rem;
+    margin: 0 30px;
+  }
+  .info-section {
+    margin-bottom: 5px;
+  }
+  
+  .info-section h4 {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  /* Enhanced detail rows for individual pages */
+  .page-detail-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    align-items: start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  
+  .page-detail-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .page-detail-value {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1e2d4e;
+    line-height: 1.5;
+  }
+  
+  .notes-section {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-left: 4px solid #d97706;
+  }
+  
+  .notes-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 0.5rem;
+  }
+  
+  .notes-content {
+    font-size: 11px;
+    line-height: 1.6;
+    color: #4b5563;
+  }
+  
+  /* Narrative styles for pages 2-8 */
+  .professional-narrative {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .narrative-paragraph {
+    margin-bottom: 1.5rem;
+  }
+  
+  .detailed-notes {
+    border-radius: 6px;
+  }
+  
+  .comprehensive-summary {
+    border-radius: 6px;
+  }
+  
+  .final-verdict {
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
   @media print {
     body {
       padding: 0;
@@ -338,83 +502,71 @@ const createHeader = (watchData: WatchAuthentication): string => `
   </div>
 `;
 
-const createMainContent = (watchData: WatchAuthentication): string => `
-  <div class="report-meta">
-        <div class="meta-group">
-          <div class="meta-label">Serial Number</div>
-          <div class="meta-value">${
-            watchData.serial_and_model_number_cross_reference?.serial_number
-          }</div>
-        </div>
-        <div class="meta-group">
-          <div class="meta-label">Date Issued</div>
-         <div class="meta-value">${
-           watchData.created_at
-             ? new Date(watchData.created_at)
-                 .toLocaleDateString("en-US", {
-                   year: "numeric",
-                   month: "long",
-                   day: "numeric",
-                 })
-                 .toUpperCase()
-             : "N/A"
-         }</div>   </div>
-        <div class="meta-group">
-          <div class="meta-label">Status</div>
-          <div class="meta-value">${watchData?.authenticity_verdict}
-    </div>
-        </div>
+const createPageHeader = (title: string): string => `
+  <div class="page-header">
+    <img class="page-logo" src="_next/static/media/logo.280af7fc.svg"/>
   </div>
+`;
 
+const createMainContent = (watchData: WatchAuthentication): string => `
+  <div class="report-meta" >
+  <div class="meta-group" style="text-align: left;">
+    <div class="meta-label">Customer</div>
+    <div class="meta-value">${watchData.name}</div>
+  </div>
+  <div class="meta-group" style="text-align: center;">
+    <div class="meta-label">Date Issued</div>
+    <div class="meta-value">${
+      watchData.created_at
+        ? new Date(watchData.created_at)
+            .toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
+            .toUpperCase()
+        : "N/A"
+    }</div>
+  </div>
+  <div class="meta-group" style="text-align: right;">
+  <div class="meta-label">Status</div>
+  <div class="meta-value" style="color: ${
+    watchData?.authenticity_verdict?.toLowerCase().includes("genuine")
+      ? "#16a34a"
+      : watchData?.authenticity_verdict?.toLowerCase().includes("counterfeit")
+      ? "#dc2626"
+      : watchData?.authenticity_verdict
+          ?.toLowerCase()
+          .includes("genuine_with_aftermarket_parts")
+      ? "#d97706"
+      : "#6b7280"
+  }; font-weight: 700;">${watchData?.authenticity_verdict}</div>
+</div>
+</div>
+
+<div class="report-meta">
+  <div class="meta-group" style="text-align: left;">
+    <div class="meta-label">Model</div>
+    <div class="meta-value">${watchData.model}</div>
+  </div>
+  <div class="meta-group" style="text-align: center;">
+    <div class="meta-label">Reference Number</div>
+    <div class="meta-value">${
+      watchData.serial_and_model_number_cross_reference?.serial_number
+    }</div>
+  </div>
+  <div class="meta-group" style="text-align: right;">
+    <div class="meta-label">Serial Number</div>
+    <div class="meta-value">${
+      watchData.serial_and_model_number_cross_reference?.serial_number
+    }</div>
+  </div>
+</div>
   <div class="main-content">
     <div class="left-section">
       <div class="details-grid">
-        <div class="detail-row">
-          <div class="detail-label">Brand:</div>
-          <div class="detail-value">${
-            watchData.brand?.toUpperCase() || "ROLEX"
-          }</div>
-        </div>
-        
-        <div class="detail-row">
-          <div class="detail-label">Model:</div>
-          <div class="detail-value">${
-            watchData.serial_and_model_number_cross_reference?.model_number ||
-            "00001"
-          }</div>
-        </div>
-     
-        
-        <div class="detail-row">
-          <div class="detail-label">Fina Summary:</div>
-          <div class="detail-value">
-        ${watchData.final_summary || "Rolex Submariner Date"}
-          </div>
-        </div>
-        
         <div class="info-section">
         <h4 style="margin:4px 0px;">Serial & Model Information</h4>
-        
-        <div class="detail-row">
-            <div class="detail-label">Serial Number:</div>
-            <div class="detail-value" id="serial_number">
-                ${
-                  watchData?.serial_and_model_number_cross_reference
-                    ?.serial_number
-                }
-            </div>
-        </div>
-        
-        <div class="detail-row">
-            <div class="detail-label">Model Number:</div>
-            <div class="detail-value" id="model_number">
-                ${
-                  watchData?.serial_and_model_number_cross_reference
-                    ?.model_number
-                }
-            </div>
-        </div>
-        
         <div class="detail-row">
             <div class="detail-label">Serial Found Location:</div>
             <div class="detail-value" id="serial_found_location">
@@ -444,13 +596,7 @@ const createMainContent = (watchData: WatchAuthentication): string => `
                }
             </div>
         </div>
-        
-        <div class="detail-row">
-            <div class="detail-label">Serial Notes:</div>
-            <div class="detail-value notes" id="serial_notes">
-               ${watchData?.serial_and_model_number_cross_reference?.notes}
-            </div>
-        </div>
+       
     </div>
 <div class="info-section">
     <h4 style="margin:4px 0px;">Case, Bezel, and Crystal Analysis</h4>
@@ -505,13 +651,7 @@ const createMainContent = (watchData: WatchAuthentication): string => `
             ${watchData?.case_bezel_and_crystal_analysis?.crown_logo_sharpness}
         </div>
     </div>
-    
-    <div class="detail-row">
-        <div class="detail-label">Case Notes:</div>
-        <div class="detail-value notes" id="case_notes">
-           ${watchData?.case_bezel_and_crystal_analysis?.notes}
-        </div>
-    </div>
+  
 </div>
 
 
@@ -546,12 +686,6 @@ const createMainContent = (watchData: WatchAuthentication): string => `
         </div>
     </div>
     
-    <div class="detail-row">
-        <div class="detail-label">Dial Notes:</div>
-        <div class="detail-value notes" id="dial_notes">
-           ${watchData?.dial_hands_and_date_scrutiny?.notes}
-        </div>
-    </div>
 </div>
 
 <div class="info-section">
@@ -596,13 +730,7 @@ const createMainContent = (watchData: WatchAuthentication): string => `
             ${watchData?.bracelet_strap_and_clasp_inspection?.clasp_engravings}
         </div>
     </div>
-    
-    <div class="detail-row">
-        <div class="detail-label">Bracelet Notes:</div>
-        <div class="detail-value notes" id="bracelet_notes">
-           ${watchData?.bracelet_strap_and_clasp_inspection?.notes}
-        </div>
-    </div>
+   
 </div>
 
 
@@ -644,12 +772,6 @@ const createMainContent = (watchData: WatchAuthentication): string => `
         </div>
     </div>
     
-    <div class="detail-row">
-        <div class="detail-label">Movement Notes:</div>
-        <div class="detail-value notes" id="movement_notes">
-           ${watchData?.movement_examination?.movement_notes}
-        </div>
-    </div>
 </div>
 <div class="info-section">
     <h4 style="margin:4px 0px;">Performance & Function Test</h4>
@@ -682,13 +804,7 @@ const createMainContent = (watchData: WatchAuthentication): string => `
         </div>
     </div>
     
-    <div class="detail-row">
-        <div class="detail-label">Performance Notes:</div>
-        <div class="detail-value notes" id="performance_notes">
-           ${watchData?.performance_and_function_test?.notes}
-        </div>
-    </div>
-    
+  
     <div class="detail-row">
         <div class="detail-label">Power Reserve Test Result:</div>
         <div class="detail-value" id="power_reserve_test_result">
@@ -791,6 +907,398 @@ const createFooter = (watchData: WatchAuthentication): string => `
       <div class="report-number">AUTH-00005053</div>
       <div class="report-date">08/8/2025</div>
       <div class="assessment-label">Professional Assessment</div>
+    </div>
+  </div>
+`;
+
+const createPageFooter = (pageLabel: string): string => `
+  <div class="footer">
+    <div class="signature-section">
+      <div class="signature-line"></div>
+      <div class="signature-title">Master Watchmaker</div>
+      <div class="signature-subtitle">CWA License #2025-001</div>
+    </div>
+    <div class="footer-info">
+      <img class="footer-icon" style="height:500px;" src="_next/static/media/icon.e4d18100.svg"/>
+      <div class="report-number">AUTH-00005053</div>
+      <div class="report-date">08/8/2025</div>
+      <div class="assessment-label">${pageLabel}</div>
+    </div>
+  </div>
+`;
+
+// Page 2: Serial Information
+const createSerialInformationContent = (
+  watchData: WatchAuthentication
+): string => `
+  <div class="page-content">
+    <div class="professional-narrative">
+      <h3 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 18px; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">SERIAL & MODEL CROSS REFERENCE ANALYSIS</h3>
+      
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          The timepiece under examination bears the serial number <strong>${
+            watchData?.serial_and_model_number_cross_reference?.serial_number ||
+            "N/A"
+          }</strong>, which corresponds to model number <strong>${
+  watchData?.serial_and_model_number_cross_reference?.model_number || "N/A"
+}</strong>. This serial identifier was located at <strong>${
+  watchData?.serial_and_model_number_cross_reference?.serial_found_location ||
+  "the standard position"
+}</strong>, demonstrating proper placement consistent with authentic manufacturing protocols. The engraving quality exhibits <strong>${
+  watchData?.serial_and_model_number_cross_reference?.engraving_quality ||
+  "standard"
+}</strong> characteristics, which aligns with expected production standards for this model line.
+        </p>
+      </div>
+
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Documentation verification reveals that the serial number <strong>${
+            watchData?.serial_and_model_number_cross_reference
+              ?.matches_documents || "requires verification"
+          }</strong> with the provided authentication documents. This cross-reference check is crucial for establishing the timepiece's provenance and manufacturing authenticity. The serial number's format, depth of engraving, and positioning all contribute to the overall authentication assessment, providing critical data points for determining the watch's legitimacy within the manufacturer's production records.
+        </p>
+      </div>
+
+      ${
+        watchData?.serial_and_model_number_cross_reference?.notes
+          ? `
+        <div class="detailed-notes" style="background: #fef3c7; padding: 1.5rem; border-left: 4px solid #f59e0b; margin-top: 2rem;">
+          <h4 style="color: #92400e; margin-bottom: 1rem; font-size: 14px;">DETAILED SERIAL ANALYSIS NOTES</h4>
+          <p style="font-size: 11px; line-height: 1.5; color: #78350f; text-align: justify;">
+            ${watchData.serial_and_model_number_cross_reference.notes}
+          </p>
+        </div>
+      `
+          : ""
+      }
+    </div>
+    <img 
+        style="width: 240px; height: 240px; object-fit: cover;"
+        src=${`http://localhost:8000/storage/${watchData?.serial_and_model_number_cross_reference?.watch_serial_info_image_path}`}
+      />
+  </div>
+`;
+
+// Page 3: Case, Bezel, and Crystal Analysis
+const createCaseBezelCrystalContent = (
+  watchData: WatchAuthentication
+): string => `
+  <div class="page-content">
+    <div class="professional-narrative">
+      <h3 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 18px; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">CASE, BEZEL & CRYSTAL CONSTRUCTION ANALYSIS</h3>
+      
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          The case construction has been meticulously examined, with material verification confirming <strong>${
+            watchData?.case_bezel_and_crystal_analysis
+              ?.case_material_verified || "standard specifications"
+          }</strong>. The overall weight characteristics present a <strong>${
+  watchData?.case_bezel_and_crystal_analysis?.case_weight_feel || "typical"
+}</strong> sensation when handled, which aligns with authentic manufacturing densities. Finishing transitions demonstrate <strong>${
+  watchData?.case_bezel_and_crystal_analysis?.finishing_transitions ||
+  "standard"
+}</strong> quality, indicating proper machining and polishing techniques consistent with factory production standards.
+        </p>
+      </div>
+
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Bezel functionality exhibits <strong>${
+            watchData?.case_bezel_and_crystal_analysis?.bezel_action ||
+            "appropriate"
+          }</strong> operation characteristics, with rotation mechanics functioning within expected parameters. The crystal assembly is confirmed as <strong>${
+  watchData?.case_bezel_and_crystal_analysis?.crystal_type || "sapphire glass"
+}</strong> construction, providing optimal clarity and scratch resistance. Laser etching of the crown logo is <strong>${
+  watchData?.case_bezel_and_crystal_analysis?.laser_etched_crown || "present"
+}</strong>, demonstrating <strong>${
+  watchData?.case_bezel_and_crystal_analysis?.crown_logo_sharpness || "adequate"
+}</strong> definition and precision typical of authentic production methods.
+        </p>
+      </div>
+
+      ${
+        watchData?.case_bezel_and_crystal_analysis?.notes
+          ? `
+        <div class="detailed-notes" style="background: #e0f2fe; padding: 1.5rem; border-left: 4px solid #0288d1; margin-top: 2rem;">
+          <h4 style="color: #01579b; margin-bottom: 1rem; font-size: 14px;">DETAILED CASE CONSTRUCTION NOTES</h4>
+          <p style="font-size: 11px; line-height: 1.5; color: #0277bd; text-align: justify;">
+            ${watchData.case_bezel_and_crystal_analysis.notes}
+          </p>
+        </div>
+      `
+          : ""
+      }
+      
+    </div>
+    <img 
+        style="width: 240px; height: 240px; object-fit: cover;"
+        src=${`http://localhost:8000/storage/${watchData?.case_bezel_and_crystal_analysis?.watch_product_case_analysis_image_path}`}
+      />
+  </div>
+`;
+
+// Page 4: Dial, Hands, and Date Scrutiny
+const createDialHandsDateContent = (watchData: WatchAuthentication): string => `
+  <div class="page-content">
+    <div class="professional-narrative">
+      <h3 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 18px; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">DIAL, HANDS & DATE MECHANISM ANALYSIS</h3>
+      
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          The dial examination reveals <strong>${
+            watchData?.dial_hands_and_date_scrutiny?.dial_text_quality ||
+            "standard"
+          }</strong> text quality, with printing characteristics that demonstrate proper ink density and character definition. Luminous material application exhibits <strong>${
+  watchData?.dial_hands_and_date_scrutiny?.lume_application || "typical"
+}</strong> distribution patterns, indicating consistent manufacturing processes. The luminous compound's color consistency, edge definition, and overall application quality align with authentic production standards, providing both functional visibility and aesthetic authenticity.
+        </p>
+      </div>
+
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Date display functionality demonstrates <strong>${
+            watchData?.dial_hands_and_date_scrutiny?.cyclops_magnification ||
+            "appropriate"
+          }</strong> cyclops magnification properties, with optical clarity and distortion characteristics consistent with genuine crystal assemblies. The date wheel alignment shows <strong>${
+  watchData?.dial_hands_and_date_scrutiny?.date_alignment || "proper"
+}</strong> positioning within the aperture window. This precise alignment, combined with the cyclops lens performance, indicates proper assembly tolerances and quality control measures throughout the manufacturing process.
+        </p>
+      </div>
+
+      ${
+        watchData?.dial_hands_and_date_scrutiny?.notes
+          ? `
+        <div class="detailed-notes" style="background: #f0fdf4; padding: 1.5rem; border-left: 4px solid #16a34a; margin-top: 2rem;">
+          <h4 style="color: #15803d; margin-bottom: 1rem; font-size: 14px;">DETAILED DIAL ANALYSIS NOTES</h4>
+          <p style="font-size: 11px; line-height: 1.5; color: #166534; text-align: justify;">
+            ${watchData.dial_hands_and_date_scrutiny.notes}
+          </p>
+        </div>
+      `
+          : ""
+      }
+    </div>
+    <img 
+        style="width: 240px; height: 240px; object-fit: cover;"
+        src=${`http://localhost:8000/storage/${watchData?.dial_hands_and_date_scrutiny?.watch_product_dial_analysis_image_path}`}
+      />
+  </div>
+`;
+
+// Page 5: Bracelet/Strap and Clasp Inspection
+const createBraceletClaspContent = (watchData: WatchAuthentication): string => `
+  <div class="page-content">
+    <div class="professional-narrative">
+      <h3 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 18px; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">BRACELET & CLASP MECHANISM ANALYSIS</h3>
+      
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          The bracelet construction features <strong>${
+            watchData?.bracelet_strap_and_clasp_inspection
+              ?.bracelet_link_type || "standard"
+          }</strong> link architecture, utilizing <strong>${
+  watchData?.bracelet_strap_and_clasp_inspection?.connection_type ||
+  "traditional"
+}</strong> connection methodology between individual segments. This construction approach demonstrates manufacturing consistency with authentic production specifications. The link finishing, dimensional accuracy, and material density all contribute to the overall assessment of bracelet authenticity and manufacturing origin.
+        </p>
+      </div>
+
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Clasp mechanism evaluation reveals <strong>${
+            watchData?.bracelet_strap_and_clasp_inspection?.clasp_action ||
+            "proper"
+          }</strong> operational characteristics, with spring tension and engagement tolerances within expected parameters. The micro-adjustment system demonstrates <strong>${
+  watchData?.bracelet_strap_and_clasp_inspection
+    ?.micro_adjustment_functioning || "appropriate"
+}</strong> functionality, providing incremental sizing capabilities. Engraving quality on clasp components exhibits <strong>${
+  watchData?.bracelet_strap_and_clasp_inspection?.clasp_engravings || "standard"
+}</strong> definition, indicating proper manufacturing techniques and quality control measures.
+        </p>
+
+        
+      </div>
+
+      ${
+        watchData?.bracelet_strap_and_clasp_inspection?.notes
+          ? `
+        <div class="detailed-notes" style="background: #fdf4ff; padding: 1.5rem; border-left: 4px solid #a855f7; margin-top: 2rem;">
+          <h4 style="color: #7c3aed; margin-bottom: 1rem; font-size: 14px;">DETAILED BRACELET ANALYSIS NOTES</h4>
+          <p style="font-size: 11px; line-height: 1.5; color: #6b21a8; text-align: justify;">
+            ${watchData.bracelet_strap_and_clasp_inspection.notes}
+          </p>
+        </div>
+      `
+          : ""
+      }
+    </div>
+     <img 
+        style="width: 240px; height: 240px; object-fit: cover;"
+        src=${`http://localhost:8000/storage/${watchData?.bracelet_strap_and_clasp_inspection?.watch_product_bracelet_analysis_image_path}`}
+        alt="Watch side view"
+      />
+  </div>
+`;
+
+// Page 6: Movement Examination
+const createMovementContent = (watchData: WatchAuthentication): string => `
+  <div class="page-content">
+    <div class="professional-narrative">
+      <h3 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 18px; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">MOVEMENT TECHNICAL EXAMINATION</h3>
+      
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          The mechanical movement houses caliber <strong>${
+            watchData?.movement_examination?.movement_caliber || "N/A"
+          }</strong>, with engraving quality demonstrating <strong>${
+  watchData?.movement_examination?.movement_engraving_quality || "standard"
+}</strong> characteristics throughout the visible components. The movement architecture displays proper component layout and finishing techniques consistent with authentic manufacturing processes. Rotor decoration, bridge finishing, and screw head quality all contribute to the comprehensive movement authentication assessment.
+        </p>
+      </div>
+
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Technical specifications reveal that purple reversing wheels are <strong>${
+            watchData?.movement_examination?.has_purple_reversing_wheels ||
+            "not present"
+          }</strong>, while the blue Parachrom hairspring is <strong>${
+  watchData?.movement_examination?.has_blue_parachrom_hairspring ||
+  "not confirmed"
+}</strong>. These distinctive technical features serve as critical authentication markers, as their presence or absence directly correlates with specific production periods and caliber variations. The combination of these technical elements provides definitive evidence regarding the movement's authenticity and manufacturing origin.
+        </p>
+      </div>
+
+      ${
+        watchData?.movement_examination?.movement_notes
+          ? `
+        <div class="detailed-notes" style="background: #f3e5f5; padding: 1.5rem; border-left: 4px solid #7b1fa2; margin-top: 2rem;">
+          <h4 style="color: #4a148c; margin-bottom: 1rem; font-size: 14px;">DETAILED MOVEMENT ANALYSIS NOTES</h4>
+          <p style="font-size: 11px; line-height: 1.5; color: #6a1b9a; text-align: justify;">
+            ${watchData.movement_examination.movement_notes}
+          </p>
+        </div>
+      `
+          : ""
+      }
+    </div>
+      <img 
+        style="width: 240px; height: 240px; object-fit: cover;"
+        src=${`http://localhost:8000/storage/${watchData?.movement_examination?.watch_movement_analysis_image_path}`}
+        alt="Watch side view"
+      />
+  </div>
+`;
+
+// Page 7: Performance & Function Test
+const createPerformanceContent = (watchData: WatchAuthentication): string => `
+  <div class="page-content">
+    <div class="professional-narrative">
+      <h3 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 18px; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">PERFORMANCE & FUNCTION VERIFICATION</h3>
+      
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Precision timing analysis reveals an amplitude measurement of <strong>${
+            watchData?.performance_and_function_test?.amplitude_degrees || "N/A"
+          }</strong> degrees, with beat error registering <strong>${
+  watchData?.performance_and_function_test?.beat_error_ms || "N/A"
+}</strong> milliseconds. The daily rate accuracy demonstrates <strong>${
+  watchData?.performance_and_function_test?.rate_seconds_per_day || "N/A"
+}</strong> seconds per day deviation. These technical measurements provide quantitative assessment of the movement's regulatory performance and overall mechanical condition.
+        </p>
+      </div>
+
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Functional testing confirms that power reserve performance indicates <strong>${
+            watchData?.performance_and_function_test
+              ?.power_reserve_test_result || "standard duration"
+          }</strong>. Chronograph functionality is <strong>${
+  watchData?.performance_and_function_test?.chronograph_works ||
+  "not applicable"
+}</strong>, while date change mechanism operates <strong>${
+  watchData?.performance_and_function_test?.date_change_works || "properly"
+}</strong>. Time setting functions demonstrate <strong>${
+  watchData?.performance_and_function_test?.time_setting_works || "normal"
+}</strong> operation. These comprehensive functional assessments verify the movement's operational integrity and manufacturing quality.
+        </p>
+      </div>
+
+      ${
+        watchData?.performance_and_function_test?.notes
+          ? `
+        <div class="detailed-notes" style="background: #fef2f2; padding: 1.5rem; border-left: 4px solid #ef4444; margin-top: 2rem;">
+          <h4 style="color: #dc2626; margin-bottom: 1rem; font-size: 14px;">DETAILED PERFORMANCE ANALYSIS NOTES</h4>
+          <p style="font-size: 11px; line-height: 1.5; color: #991b1b; text-align: justify;">
+            ${watchData.performance_and_function_test.notes}
+          </p>
+        </div>
+      `
+          : ""
+      }
+    </div>
+      <img 
+        style="width: 240px; height: 240px; object-fit: cover;"
+        src=${`http://localhost:8000/storage/${watchData?.performance_and_function_test?.watch_performance_tests_image_path}`}
+        alt="Watch side view"
+      />
+  </div>
+`;
+
+// Page 8: Final Condition & Grading
+const createFinalConditionContent = (
+  watchData: WatchAuthentication
+): string => `
+  <div class="page-content">
+    <div class="professional-narrative">
+      <h3 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 18px; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">FINAL AUTHENTICATION ASSESSMENT</h3>
+      
+      <div class="narrative-paragraph" style="margin-bottom: 1.5rem;">
+        <p style="font-size: 12px; line-height: 1.6; text-align: justify; color: #1f2937;">
+          Based on comprehensive multi-point analysis encompassing serial verification, case construction, dial examination, bracelet assessment, movement inspection, and performance testing, the authenticity determination for this <strong>${
+            watchData?.brand?.toUpperCase() || "TIMEPIECE"
+          }</strong> is conclusively established as <strong>${
+  watchData?.authenticity_verdict || "PENDING VERIFICATION"
+}</strong>. The estimated production year is determined to be <strong>${
+  watchData?.estimated_production_year || "requiring further analysis"
+}</strong>, based on serial number correlation and technical specification matching.
+        </p>
+      </div>
+
+      <div class="final-verdict" style="text-align: center; padding: 2rem; background: ${
+        watchData?.authenticity_verdict?.toLowerCase().includes("authentic")
+          ? "#f0f9ff"
+          : "#fef2f2"
+      }; border: 2px solid ${
+  watchData?.authenticity_verdict?.toLowerCase().includes("authentic")
+    ? "#3b82f6"
+    : "#ef4444"
+}; border-radius: 8px; margin: 2rem 0;">
+        <div style="font-size: 28px; font-weight: 700; color: ${
+          watchData?.authenticity_verdict?.toLowerCase().includes("authentic")
+            ? "#1e3a8a"
+            : "#dc2626"
+        }; margin-bottom: 0.5rem;">
+          ${watchData?.authenticity_verdict || "VERIFICATION PENDING"}
+        </div>
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">
+          OFFICIAL AUTHENTICATION STATUS
+        </div>
+      </div>
+
+      ${
+        watchData?.final_summary
+          ? `
+        <div class="comprehensive-summary" style="background: #f8fafc; padding: 1.5rem; border-left: 4px solid #d97706; margin-top: 2rem;">
+          <h4 style="color: #1e3a8a; margin-bottom: 1rem; font-size: 14px;">COMPREHENSIVE FINAL SUMMARY</h4>
+          <p style="font-size: 11px; line-height: 1.5; color: #1f2937; text-align: justify;">
+            ${watchData.final_summary}
+          </p>
+        </div>
+      `
+          : ""
+      }
     </div>
   </div>
 `;

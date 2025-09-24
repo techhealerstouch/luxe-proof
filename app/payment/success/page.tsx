@@ -139,7 +139,6 @@ export default function PaymentSuccess() {
                 </Card>
               )}
 
-              {/* Action Buttons */}
               <div className="space-y-3">
                 <Button onClick={handleContinue} className="w-full" size="lg">
                   Continue to Dashboard
@@ -147,7 +146,7 @@ export default function PaymentSuccess() {
                 </Button>
 
                 <Button asChild variant="outline" className="w-full" size="lg">
-                  <Link href="/credits">View Credits Balance</Link>
+                  <Link href="/billing">View Credits Balance</Link>
                 </Button>
               </div>
             </CardContent>

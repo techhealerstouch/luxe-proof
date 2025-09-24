@@ -199,8 +199,6 @@ export default function CreateAuthenticationPage() {
   }, [validatedSerial, form]);
 
   const {
-    handleSubmit,
-    control,
     reset,
     trigger,
     formState: { errors },
@@ -243,7 +241,6 @@ export default function CreateAuthenticationPage() {
       toast.error("Please fix the validation errors before proceeding");
       return;
     }
-
     const allData = form.getValues();
     const finalValidation = fullFormSchema.safeParse(allData);
 
@@ -252,7 +249,6 @@ export default function CreateAuthenticationPage() {
       toast.error("Please complete all required fields");
       return;
     }
-
     // Check credits before submitting
     const currentCredits = getCurrentCredits();
     if (currentCredits < 1000) {
@@ -286,8 +282,7 @@ export default function CreateAuthenticationPage() {
       setCompletedTabs(new Set());
       reset();
 
-      // Redirect to success page or back to intro
-      router.push("/authentications/intro");
+      // router.push("/authentications/intro");
     } catch (error) {
       setIsSubmitting(false);
       toast.error("Failed to submit authenticated watch data");
@@ -321,7 +316,10 @@ export default function CreateAuthenticationPage() {
     }
 
     const allData = form.getValues();
+
+    console.log("My all Data", allData);
     const finalValidation = fullFormSchema.safeParse(allData);
+    console.log("My Final Validation", finalValidation);
     if (!finalValidation.success) {
       setIsSubmitting(false);
       toast.error("Please complete all required fields");
@@ -331,17 +329,14 @@ export default function CreateAuthenticationPage() {
     const watchData = finalValidation.data;
 
     try {
-      // Deduct credits FIRST
       const deductResult = await deductCredits(1000);
       if (!deductResult) {
         throw new Error(deductResult.message || "Failed to deduct credits");
       }
-
-      // Then process authentication
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
-
       const creditService = CreditService.getInstance();
       await creditService.refreshCredits();
+
       toast.success("Authentication submitted successfully!");
       // Clean up and navigate
       localStorage.removeItem("validated_serial");

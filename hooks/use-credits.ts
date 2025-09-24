@@ -26,7 +26,7 @@ export const useCredits = (): UseCreditsResult => {
       }
 
       const response = await axios.get(
-        `http://localhost:8000/api/authenticator/credits`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/credits`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

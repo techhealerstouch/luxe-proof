@@ -38,7 +38,6 @@ export default function DeleteConfirmationDialog({
   const handleDelete = async () => {
     setLoading(true);
     const token = localStorage.getItem("accessToken");
-
     try {
       await axios.delete(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth-products/${id}`,
@@ -48,7 +47,6 @@ export default function DeleteConfirmationDialog({
           },
         }
       );
-
       await fetchData();
       setOpen(false); // close dialog only on success
     } catch (error) {

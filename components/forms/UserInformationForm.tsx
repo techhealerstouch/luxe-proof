@@ -20,13 +20,13 @@ type FormValues = {
   brand: string;
   model: string;
   user_type: string;
-  company_name: string;
-  abn: string;
+  date_of_sale: string;
   company_address: string;
   name: string;
   email: string;
   phone: string;
   contact_method: string;
+  company_name: string;
 };
 type UserInformationFormProps = {
   form: UseFormReturn<FormValues>;
@@ -38,25 +38,10 @@ export function UserInformationForm({
   onSubmit,
 }: UserInformationFormProps) {
   const { handleSubmit, control } = form;
-
-  // Watch for user_type value
   const userType = useWatch({ control, name: "user_type" });
-
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-y-4">
-        <FormField
-          name={"id" as keyof FormValues}
-          render={({ field }) => (
-            <FormItem className="hidden">
-              <FormLabel className="hidden">ID</FormLabel>
-              <FormControl>
-                <Input type="hidden" {...field} value={field.value || ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <FormField
           name={"brand" as keyof FormValues}
           render={({ field }) => (
@@ -83,7 +68,18 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-
+        <FormField
+          name={"reference_number" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Reference Number</FormLabel>
+              <FormControl>
+                <Input {...field} value={field.value || ""} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           name={"model" as keyof FormValues}
           render={({ field }) => (
@@ -96,6 +92,69 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
+        {/* User Type */}
+        <FormField
+          name={"user_type" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>User Type</FormLabel>
+              <FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || ""}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select user type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="personal">Personal</SelectItem>
+                    <SelectItem value="company">Company</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Company Fields */}
+        {userType === "company" && (
+          <>
+            <FormField
+              name={"company_name" as keyof FormValues}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      autoComplete="organization"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              name={"company_address" as keyof FormValues}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Address</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      autoComplete="street-address"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
 
         {/* Full Name */}
         <FormField
@@ -109,6 +168,85 @@ export function UserInformationForm({
                   value={field.value || ""}
                   autoComplete="name"
                 />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* Email */}
+        <FormField
+          name={"email" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email Address *</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  type="email"
+                  autoComplete="email"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          name={"phone" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone Number</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  type="tel"
+                  autoComplete="phone"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* Date of Sale */}
+        <FormField
+          name={"date_of_sale" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date of Sale</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  type="date"
+                  autoComplete="bday"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Contact Method */}
+        <FormField
+          name={"contact_method" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Preferred Contact Method</FormLabel>
+              <FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || ""}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select contact method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="phone">Phone</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormMessage />
             </FormItem>

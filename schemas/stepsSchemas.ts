@@ -10,7 +10,6 @@ export const UserInformationSchema = z.object({
     required_error: "Please select a user type",
   }),
   company_name: z.string().optional(),
-  abn: z.string().optional(),
   company_address: z.string().optional(),
   name: z.string().min(1, { message: "Full Name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
@@ -108,10 +107,19 @@ export const step1Schema = z.object({
   service_history_notes: z.string().optional(),
 });
 export const step2Schema = z.object({
+  watch_serial_info_image: z
+    .instanceof(File)
+    .refine((file) => file.size > 0, {
+      message: "Empty files are not allowed",
+    })
+    .refine((file) => isValidImageType(file), {
+      message: "Only PNG and JPG images are allowed",
+    })
+    .refine((file) => file.size <= 1 * 1024 * 1024, {
+      message: "File size must be less than 1MB",
+    }), // Changed from watch_images_front
   serial_number: z.string().min(1, { message: "Serial number is required" }),
-
   model_number: z.string().min(1, { message: "Model number is required" }),
-
   serial_found_location: z
     .string()
     .min(1, { message: "Serial location is required" }),
@@ -130,6 +138,17 @@ export const step2Schema = z.object({
 });
 
 export const step3Schema = z.object({
+  watch_product_case_analysis_image: z
+    .instanceof(File)
+    .refine((file) => file.size > 0, {
+      message: "Empty files are not allowed",
+    })
+    .refine((file) => isValidImageType(file), {
+      message: "Only PNG and JPG images are allowed",
+    })
+    .refine((file) => file.size <= 1 * 1024 * 1024, {
+      message: "File size must be less than 1MB",
+    }), // Changed from watch_images_front
   case_material_verified: z.enum(["yes", "no"], {
     required_error: "Please specify if case material is verified",
   }),
@@ -162,6 +181,17 @@ export const step3Schema = z.object({
 });
 
 export const step4Schema = z.object({
+  watch_product_dial_analysis_image: z
+    .instanceof(File)
+    .refine((file) => file.size > 0, {
+      message: "Empty files are not allowed",
+    })
+    .refine((file) => isValidImageType(file), {
+      message: "Only PNG and JPG images are allowed",
+    })
+    .refine((file) => file.size <= 1 * 1024 * 1024, {
+      message: "File size must be less than 1MB",
+    }), // Changed from watch_images_front
   dial_text_quality: z.enum(["crisp", "blurry", "misaligned"], {
     required_error: "Dial text quality is required",
   }),
@@ -178,6 +208,17 @@ export const step4Schema = z.object({
 });
 
 export const step5Schema = z.object({
+  watch_product_bracelet_analysis_image: z
+    .instanceof(File)
+    .refine((file) => file.size > 0, {
+      message: "Empty files are not allowed",
+    })
+    .refine((file) => isValidImageType(file), {
+      message: "Only PNG and JPG images are allowed",
+    })
+    .refine((file) => file.size <= 1 * 1024 * 1024, {
+      message: "File size must be less than 1MB",
+    }), // Changed from watch_images_front
   bracelet_link_type: z.enum(["solid", "hollow"], {
     required_error: "Bracelet link type is required",
   }),
@@ -202,6 +243,17 @@ export const step5Schema = z.object({
 });
 
 export const step6Schema = z.object({
+  watch_movement_analysis_image: z
+    .instanceof(File)
+    .refine((file) => file.size > 0, {
+      message: "Empty files are not allowed",
+    })
+    .refine((file) => isValidImageType(file), {
+      message: "Only PNG and JPG images are allowed",
+    })
+    .refine((file) => file.size <= 1 * 1024 * 1024, {
+      message: "File size must be less than 1MB",
+    }), // Changed from watch_images_front
   movement_caliber: z.string().min(1, "Movement Caliber Number is required"),
 
   movement_engraving_quality: z.enum(["sharp", "engraved", "missing"], {
@@ -224,6 +276,17 @@ export const step6Schema = z.object({
 });
 
 export const step7Schema = z.object({
+  watch_performance_tests_image: z
+    .instanceof(File)
+    .refine((file) => file.size > 0, {
+      message: "Empty files are not allowed",
+    })
+    .refine((file) => isValidImageType(file), {
+      message: "Only PNG and JPG images are allowed",
+    })
+    .refine((file) => file.size <= 1 * 1024 * 1024, {
+      message: "File size must be less than 1MB",
+    }), // Changed from watch_images_front
   rate_seconds_per_day: z
     .string()
     .min(1, "Rate is required")

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { useAuth } from "@/components/auth-provider";
-import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { step1Schema } from "@/schemas/stepsSchemas";
-import { FileCheck, CheckCircle, Save, Send } from "lucide-react";
+import { CheckCircle, Send } from "lucide-react";
 import { toast } from "sonner";
 
 // Import step components
@@ -40,6 +38,11 @@ interface WatchAuthentication {
   id: string;
   account_id: string;
   name: string;
+  email: string;
+  phone: string;
+  contact_method: string;
+  company_name: string;
+  company_address: string;
   brand: string;
   model: string;
   date_of_sale: string;
@@ -59,6 +62,7 @@ interface WatchAuthentication {
     service_history_notes?: string;
   };
   serial_and_model_number_cross_reference: {
+    watch_serial_info_image_path?: File | null;
     serial_number?: string;
     model_number?: string;
     serial_found_location?: string;
@@ -67,6 +71,7 @@ interface WatchAuthentication {
     notes?: string;
   };
   case_bezel_and_crystal_analysis: {
+    watch_product_case_analysis_image_path?: File | null;
     case_material_verified?: string;
     case_weight_feel?: string;
     finishing_transitions?: string;
@@ -77,6 +82,7 @@ interface WatchAuthentication {
     notes?: string;
   };
   dial_hands_and_date_scrutiny: {
+    watch_product_dial_analysis_image_path?: File | null;
     dial_text_quality?: string;
     lume_application?: string;
     cyclops_magnification?: string;
@@ -84,6 +90,7 @@ interface WatchAuthentication {
     notes?: string;
   };
   bracelet_strap_and_clasp_inspection: {
+    watch_product_bracelet_analysis_image_path?: File | null;
     bracelet_link_type?: string;
     connection_type?: string;
     clasp_action?: string;
@@ -92,6 +99,7 @@ interface WatchAuthentication {
     notes?: string;
   };
   movement_examination: {
+    watch_movement_analysis_image_path?: File | null;
     movement_caliber?: string;
     movement_engraving_quality?: string;
     movement_other?: string;
@@ -102,6 +110,7 @@ interface WatchAuthentication {
     has_blue_parachrom_hairspring?: boolean;
   };
   performance_and_function_test: {
+    watch_performance_tests_image_path?: File | null;
     amplitude_degrees?: string;
     beat_error_ms?: string;
     chronograph_works?: "yes" | "no" | "n/a";
@@ -129,13 +138,10 @@ export function EditAuthenticationModal({
   onOpenChange,
   trigger,
   watchData,
-  onSave,
-  onSubmit,
 }: EditAuthenticationModalProps) {
   const [tabValue, setTabValue] = useState("userInformation");
   const [internalOpen, setInternalOpen] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
-
   // Use controlled open state if provided, otherwise use internal state
   const isOpen = open !== undefined ? open : internalOpen;
   const handleOpenChange = onOpenChange || setInternalOpen;
@@ -144,10 +150,15 @@ export function EditAuthenticationModal({
   const userInformationForm = useForm({
     defaultValues: {
       id: watchData?.id || "",
-      account_id: watchData?.id || "",
+      account_id: watchData?.account_id || "",
       name: watchData?.name || "",
+      email: watchData?.email || "",
+      date_of_sale: watchData?.date_of_sale || "",
       brand: watchData?.brand || "",
       model: watchData?.model || "",
+      company_name: watchData?.company_name || "",
+      company_address: watchData?.company_address || "",
+      contact_method: watchData?.contact_method || "",
     },
   });
 
@@ -315,15 +326,18 @@ export function EditAuthenticationModal({
     return {
       // User information (main product fields)
       id: userInformationData.id,
-      account_id: userInformationData?.id,
+      account_id: userInformationData?.account_id,
       name: userInformationData?.name,
       brand: userInformationData?.brand,
       model: userInformationData?.model,
+      email: userInformationData?.email,
+      company_name: userInformationData?.company_name,
+      company_address: userInformationData?.company_address,
+      contact_method: userInformationData?.contact_method,
       date_of_sale: watchData?.date_of_sale || "",
       authenticity_verdict: step8Data.authenticity_verdict,
       final_summary: step8Data.final_summary,
       estimated_production_year: step8Data.estimated_production_year,
-
       // Provenance documentation (step 1) - FILES WILL BE HANDLED SEPARATELY
       warranty_card: step1Data.warranty_card,
       purchase_receipt: step1Data.purchase_receipt,
@@ -399,6 +413,7 @@ export function EditAuthenticationModal({
       // Collect and validate data
       const allData = collectAllFormData();
 
+      console.log(allData);
       // Validate all forms
       const validationResults = await Promise.all([
         userInformationForm.trigger(),

@@ -45,11 +45,8 @@ const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
     filePath.split("/").pop() || label.toLowerCase().replace(/\s+/g, "_");
 
   const handleDownload = async () => {
-    console.log("API Download URL:", fullUrl);
-
     try {
       const token = localStorage.getItem("accessToken");
-
       const response = await fetch(fullUrl, {
         method: "GET",
         headers: {
@@ -66,7 +63,6 @@ const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
       const contentType =
         response.headers.get("content-type") || "application/octet-stream";
       const blob = await response.blob();
-
       // Create blob with correct MIME type
       const properBlob = new Blob([blob], { type: contentType });
 
@@ -84,7 +80,6 @@ const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
         window.URL.revokeObjectURL(downloadUrl);
       }, 1000);
     } catch (error) {
-      console.error("API download failed:", error);
       alert(
         `Download failed: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -195,9 +190,18 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           label="Production Year"
           value={watchData.estimated_production_year}
         />
-        <div className="col-span-2">
-          <DetailItem label="Final Summary" value={watchData.final_summary} />
-        </div>
+
+        <DetailItem label="Phone" value={watchData.phone} />
+        <DetailItem label="Email" value={watchData.email} />
+        <DetailItem label="Date of Sale" value={watchData.date_of_sale} />
+        <DetailItem
+          label="Preffered Contact Method"
+          value={watchData.contact_method}
+        />
+        <DetailItem label="Company Name" value={watchData.company_name} />
+        <DetailItem label="Company Address" value={watchData.company_address} />
+
+        <DetailItem label="Final Summary" value={watchData.final_summary} />
       </div>
     </CardContent>
   </Card>
@@ -212,6 +216,10 @@ export const SerialInfoSection: React.FC<{
 
   return (
     <DetailSection title="Serial & Model Information">
+      <DocumentDownloadButton
+        filePath={serialInfo.watch_serial_info_image_path}
+        label="Image Serial number"
+      />
       <DetailItem label="Serial Number" value={serialInfo.serial_number} />
       <DetailItem label="Model Number" value={serialInfo.model_number} />
       <DetailItem
@@ -245,6 +253,10 @@ export const CaseAnalysisSection: React.FC<{
 
   return (
     <DetailSection title="Case, Bezel & Crystal Analysis">
+      <DocumentDownloadButton
+        filePath={caseAnalysis.watch_product_case_analysis_image_path}
+        label="Image Case,Bezel and Crystal"
+      />
       <DetailItem
         label="Material Verified"
         value={caseAnalysis.case_material_verified}
@@ -284,6 +296,10 @@ export const DialAnalysisSection: React.FC<{
 
   return (
     <DetailSection title="Dial, Hands & Date Scrutiny">
+      <DocumentDownloadButton
+        filePath={dialAnalysis.watch_product_dial_analysis_image_path}
+        label="Image Case,Bezel and Crystal"
+      />
       <DetailItem label="Text Quality" value={dialAnalysis.dial_text_quality} />
       <DetailItem
         label="Lume Application"
@@ -316,6 +332,10 @@ export const BraceletAnalysisSection: React.FC<{
 
   return (
     <DetailSection title="Bracelet, Strap & Clasp Inspection">
+      <DocumentDownloadButton
+        filePath={braceletAnalysis.watch_product_bracelet_analysis_image_path}
+        label="Image Case,Bezel and Crystal"
+      />
       <DetailItem
         label="Link Type"
         value={braceletAnalysis.bracelet_link_type}
@@ -352,6 +372,10 @@ export const MovementAnalysisSection: React.FC<{
 
   return (
     <DetailSection title="Movement Examination">
+      <DocumentDownloadButton
+        filePath={movementAnalysis.watch_movement_analysis_image_path}
+        label="Image Case,Bezel and Crystal"
+      />
       <DetailItem label="Caliber" value={movementAnalysis.movement_caliber} />
       <DetailItem
         label="Engraving Quality"
@@ -399,6 +423,10 @@ export const PerformanceTestSection: React.FC<{
 
   return (
     <DetailSection title="Performance & Function Test">
+      <DocumentDownloadButton
+        filePath={performanceTest.watch_performance_tests_image_path}
+        label="Image Case,Bezel and Crystal"
+      />
       <DetailItem
         label="Rate (seconds/day)"
         value={performanceTest.rate_seconds_per_day}
