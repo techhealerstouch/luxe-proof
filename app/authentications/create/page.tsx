@@ -543,7 +543,7 @@ export default function CreateAuthenticationPage() {
                       <Button
                         type="button"
                         onClick={handleButtonSubmit}
-                        disabled={isSubmitting || getCurrentCredits() < 1000}
+                        disabled={isSubmitting}
                         className="bg-green-600 hover:bg-green-700"
                       >
                         {isSubmitting ? (
@@ -551,14 +551,9 @@ export default function CreateAuthenticationPage() {
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
                             Submitting...
                           </>
-                        ) : getCurrentCredits() < 1000 ? (
-                          <>
-                            Insufficient Credits
-                            <CheckCircle className="h-4 w-4 ml-2" />
-                          </>
                         ) : (
                           <>
-                            Submit Authentication (1000 credits)
+                            Submit Authentication
                             <CheckCircle className="h-4 w-4 ml-2" />
                           </>
                         )}

@@ -56,6 +56,17 @@ import CreditsDisplay from "@/components/CreditsDisplay";
 import TopUp from "@/components/TopUp";
 import ApiCreditStatus from "@/components/ApiCreditStatus";
 
+// Import credits service functions
+import {
+  fetchCredits,
+  createInvoice,
+  getAuthenticationCount,
+  formatCurrency,
+  DEFAULT_PACKAGES,
+  CreditService,
+  type Package,
+} from "@/lib/credit-service"; // Adjust path as needed
+
 interface DashboardStats {
   totalAuthentications: number;
   pendingAuthentications: number;
@@ -89,16 +100,6 @@ interface TopBrand {
   revenue: number;
 }
 
-// Credits types
-interface Package {
-  id: string;
-  name: string;
-  credits: number;
-  price: number;
-  popular: boolean;
-  discount?: number;
-}
-
 interface PaymentMethod {
   id: string;
   name: string;
@@ -107,33 +108,6 @@ interface PaymentMethod {
   description: string;
   enabled: boolean;
 }
-
-// Credits constants
-const DEFAULT_PACKAGES: Package[] = [
-  {
-    id: "starter",
-    name: "Starter Package",
-    credits: 1000,
-    price: 1000,
-    popular: false,
-  },
-  {
-    id: "basic",
-    name: "Basic Package",
-    credits: 5000,
-    price: 4500,
-    popular: true,
-    discount: 10,
-  },
-  {
-    id: "standard",
-    name: "Standard Package",
-    credits: 10000,
-    price: 8500,
-    popular: false,
-    discount: 15,
-  },
-];
 
 const PAYMENT_METHODS: PaymentMethod[] = [
   {
@@ -181,8 +155,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Credits state
+  // Credits state - now using API instead of localStorage
   const [userCredits, setUserCredits] = useState(0);
+  const [creditsLoading, setCreditsLoading] = useState(false);
+  const [creditsError, setCreditsError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [topUpDialogOpen, setTopUpDialogOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
@@ -193,21 +169,10 @@ export default function DashboardPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // Credits utility functions
-  const getCurrentCredits = (): number => {
-    try {
-      const savedCredits = localStorage.getItem("userCredits");
-      return savedCredits ? parseInt(savedCredits, 10) : 0;
-    } catch (error) {
-      console.error("Error reading credits from localStorage:", error);
-      return 0;
-    }
-  };
+  // Initialize credits service
+  const creditService = CreditService.getInstance();
 
-  const saveCredits = (credits: number): void => {
-    localStorage.setItem("userCredits", credits.toString());
-  };
-
+  // Credits utility functions using the service
   const getCreditStatus = (credits: number) => {
     if (credits === 0) {
       return {
@@ -240,10 +205,6 @@ export default function DashboardPage() {
     }
   };
 
-  const getAuthenticationCapacity = (credits: number) => {
-    return Math.floor(credits / 1000);
-  };
-
   const formatPrice = (price: number, discount?: number) => {
     if (discount) {
       const discountedPrice = price * (1 - discount / 100);
@@ -254,6 +215,23 @@ export default function DashboardPage() {
       };
     }
     return { original: price };
+  };
+
+  // Load credits from API
+  const loadUserCredits = async () => {
+    try {
+      setCreditsLoading(true);
+      setCreditsError(null);
+      const credits = await fetchCredits();
+      setUserCredits(credits);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load credits";
+      setCreditsError(errorMessage);
+      console.error("Error loading credits:", error);
+    } finally {
+      setCreditsLoading(false);
+    }
   };
 
   // Credits handlers
@@ -267,24 +245,8 @@ export default function DashboardPage() {
     setPaymentError(null);
   };
 
-  const simulatePayment = async (packageData: Package) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const success = Math.random() > 0.1;
-        resolve(
-          success
-            ? { success: true }
-            : {
-                success: false,
-                error: "Payment was declined. Please try again.",
-              }
-        );
-      }, 2000);
-    });
-  };
-
   const handleProceedToPayment = async (): Promise<void> => {
-    if (!selectedPackage || !selectedPaymentMethod) {
+    if (!selectedPackage || !selectedPaymentMethod || !user?.id) {
       setPaymentError("Please select a package and payment method");
       return;
     }
@@ -301,28 +263,34 @@ export default function DashboardPage() {
     setPaymentError(null);
 
     try {
-      const result: any = await simulatePayment(packageData);
+      // Use the credits service to create invoice
+      const invoiceUrl = await creditService.topUp(user.id, packageData);
 
-      if (result.success) {
-        const newCredits = userCredits + packageData.credits;
-        setUserCredits(newCredits);
-        saveCredits(newCredits);
-        setPaymentSuccess(true);
+      // For now, simulate payment success after creating invoice
+      // In a real implementation, you'd redirect to the payment gateway
+      // and handle the callback
+      setTimeout(async () => {
+        try {
+          // Refresh credits after payment
+          const newCredits = await creditService.refreshCredits();
+          setUserCredits(newCredits);
+          setPaymentSuccess(true);
 
-        // Trigger custom event for same-window updates
-        window.dispatchEvent(new Event("storage-update"));
-
-        setTimeout(() => {
-          handleDialogClose();
-        }, 2000);
-      } else {
-        throw new Error(result.error || "Payment failed");
-      }
+          setTimeout(() => {
+            handleDialogClose();
+          }, 2000);
+        } catch (error) {
+          setPaymentError(
+            "Payment completed but failed to refresh credits. Please refresh the page."
+          );
+        } finally {
+          setProcessingPayment(false);
+        }
+      }, 2000);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Payment processing failed";
       setPaymentError(errorMessage);
-    } finally {
       setProcessingPayment(false);
     }
   };
@@ -457,13 +425,13 @@ export default function DashboardPage() {
               {pkg.credits.toLocaleString()} credits
             </p>
             <p className="text-xs text-blue-600 font-medium">
-              {getAuthenticationCapacity(pkg.credits)} authentication
-              {getAuthenticationCapacity(pkg.credits) !== 1 ? "s" : ""}
+              {getAuthenticationCount(pkg.credits)} authentication
+              {getAuthenticationCount(pkg.credits) !== 1 ? "s" : ""}
             </p>
           </div>
           {pkg.discount && pricing.savings && (
             <p className="text-xs text-green-600 font-medium">
-              Save ${pricing.savings}
+              Save {formatCurrency(pricing.savings)}
             </p>
           )}
         </div>
@@ -472,17 +440,16 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             {pricing.discounted && (
               <span className="text-sm text-gray-500 line-through">
-                ${pricing.original}
+                {formatCurrency(pricing.original)}
               </span>
             )}
             <div className="font-semibold text-lg">
-              ${pricing.discounted || pricing.original}
+              {formatCurrency(pricing.discounted || pricing.original)}
             </div>
           </div>
           <div className="text-xs text-gray-500">
-            $
-            {((pricing.discounted || pricing.original) / pkg.credits).toFixed(
-              2
+            {formatCurrency(
+              (pricing.discounted || pricing.original) / pkg.credits
             )}
             /credit
           </div>
@@ -533,9 +500,8 @@ export default function DashboardPage() {
         "Content-Type": "application/json",
       };
 
-      // Update credits when refreshing
-      const currentCredits = getCurrentCredits();
-      setUserCredits(currentCredits);
+      // Load credits from API instead of localStorage
+      await loadUserCredits();
 
       // Fetch stats
       try {
@@ -558,7 +524,7 @@ export default function DashboardPage() {
             lastMonthRevenue: Number(statsData.lastMonthRevenue) || 0,
             totalClients: Number(statsData.totalClients) || 0,
             creditsUsed: Number(statsData.creditsUsed) || 0,
-            creditsRemaining: currentCredits, // Use localStorage credits instead
+            creditsRemaining: userCredits, // Use API credits
           });
         }
       } catch (error) {
@@ -577,12 +543,11 @@ export default function DashboardPage() {
           const mappedData = Array.isArray(recentData.data)
             ? recentData.data
                 .sort((a: any, b: any) => {
-                  // Sort by created_at in descending order (most recent first)
                   const dateA = new Date(a.created_at || 0).getTime();
                   const dateB = new Date(b.created_at || 0).getTime();
                   return dateB - dateA;
                 })
-                .slice(0, 5) // Limit to 5 most recent
+                .slice(0, 5)
                 .map((item: any) => ({
                   id: item.id,
                   name: item.client_name || item.name || "Unknown Client",
@@ -632,30 +597,27 @@ export default function DashboardPage() {
     }
   };
 
+  // Subscribe to credit changes
+  useEffect(() => {
+    const unsubscribe = creditService.subscribe((credits) => {
+      setUserCredits(credits);
+    });
+
+    return unsubscribe;
+  }, [creditService]);
+
   useEffect(() => {
     if (user) {
       fetchDashboardData();
     }
   }, [user]);
 
-  // Update credits state when component mounts and periodically
   useEffect(() => {
     setIsClient(true);
-    const updateCredits = () => {
-      const credits = getCurrentCredits();
-      setUserCredits(credits);
-    };
-
-    updateCredits();
-
-    // Update credits every 5 seconds to catch changes from other components
-    const interval = setInterval(updateCredits, 5000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const creditStatus = getCreditStatus(userCredits);
-  const authCapacity = getAuthenticationCapacity(userCredits);
+  const authCapacity = getAuthenticationCount(userCredits);
 
   if (isLoading || !user) {
     return <AuthLoading />;
@@ -690,15 +652,22 @@ export default function DashboardPage() {
               variant="outline"
               size="sm"
               onClick={() => fetchDashboardData()}
+              disabled={loading || creditsLoading}
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${
+                  loading || creditsLoading ? "animate-spin" : ""
+                }`}
+              />
               Refresh
             </Button>
             <Button
               asChild
-              disabled={userCredits < 1000}
+              disabled={userCredits < 1000 || creditsLoading}
               className={
-                userCredits < 1000 ? "opacity-50 cursor-not-allowed" : ""
+                userCredits < 1000 || creditsLoading
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
               }
             >
               <Link href="/authentications/intro">
@@ -736,8 +705,36 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        {/* Credits Error Display */}
+        {creditsError && (
+          <Card className="border-orange-500 bg-orange-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <h3 className="font-semibold text-orange-600 mb-1">
+                      Credits Error
+                    </h3>
+                    <p className="text-sm text-orange-600/80">{creditsError}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadUserCredits}
+                  className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                >
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Credit Status Alert */}
         {isClient &&
+          !creditsLoading &&
           (creditStatus.status === "empty" ||
             creditStatus.status === "low") && (
             <Card className={`border ${creditStatus.bgColor}`}>
@@ -819,30 +816,85 @@ export default function DashboardPage() {
               <CardDescription>Your current credit status</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Display actual credits from API */}
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Current Balance</p>
-                  <CreditsDisplay
-                    size="lg"
-                    showRefresh={true}
-                    className="mt-2"
-                  />
+                  {creditsLoading ? (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">
+                        Loading...
+                      </span>
+                    </div>
+                  ) : creditsError ? (
+                    <div className="flex items-center gap-2 mt-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <span className="text-sm text-red-500">
+                        Failed to load
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <div className="text-2xl font-bold flex items-center gap-2">
+                        <Coins className="h-5 w-5 text-blue-600" />
+                        {userCredits.toLocaleString()}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {authCapacity} authentication
+                        {authCapacity !== 1 ? "s" : ""} available
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Quick Actions</p>
-                  <div className="mt-2">
-                    <TopUp
-                      buttonText="Top Up"
-                      buttonVariant="outline"
-                      buttonSize="sm"
-                    />
+                  <div className="mt-2 space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadUserCredits}
+                      disabled={creditsLoading}
+                    >
+                      <RefreshCw
+                        className={`w-3 h-3 mr-1 ${
+                          creditsLoading ? "animate-spin" : ""
+                        }`}
+                      />
+                      Refresh
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setTopUpDialogOpen(true)}
+                      className="w-full"
+                    >
+                      <CreditCard className="w-3 h-3 mr-1" />
+                      Top Up
+                    </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Status indicator based on fetched credits */}
-              <ApiCreditStatus />
+              {/* Credit status indicator */}
+              {!creditsLoading && !creditsError && (
+                <div
+                  className={`p-3 rounded-lg border ${creditStatus.bgColor}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {creditStatus.status === "good" ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertTriangle
+                        className={`h-4 w-4 ${creditStatus.color}`}
+                      />
+                    )}
+                    <span
+                      className={`text-sm font-medium ${creditStatus.color}`}
+                    >
+                      {creditStatus.message}
+                    </span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -854,14 +906,18 @@ export default function DashboardPage() {
               <Button
                 asChild
                 className={`w-full justify-start ${
-                  userCredits < 1000 ? "opacity-50" : ""
+                  userCredits < 1000 || creditsLoading ? "opacity-50" : ""
                 }`}
-                disabled={userCredits < 1000}
+                disabled={userCredits < 1000 || creditsLoading}
               >
                 <Link href="/authentications/intro">
                   <Plus className="w-4 h-4 mr-2" />
                   Start Authentication{" "}
-                  {userCredits < 1000 ? "(Insufficient Credits)" : ""}
+                  {userCredits < 1000
+                    ? "(Insufficient Credits)"
+                    : creditsLoading
+                    ? "(Loading...)"
+                    : ""}
                 </Link>
               </Button>
               <Button
@@ -1024,13 +1080,17 @@ export default function DashboardPage() {
                   <Button
                     asChild
                     size="sm"
-                    disabled={userCredits < 1000}
-                    className={userCredits < 1000 ? "opacity-50" : ""}
+                    disabled={userCredits < 1000 || creditsLoading}
+                    className={
+                      userCredits < 1000 || creditsLoading ? "opacity-50" : ""
+                    }
                   >
                     <Link href="/authentications/intro">
                       <Plus className="h-4 w-4 mr-2" />
                       {userCredits < 1000
                         ? "Need Credits"
+                        : creditsLoading
+                        ? "Loading..."
                         : "Start First Authentication"}
                     </Link>
                   </Button>
@@ -1108,8 +1168,8 @@ export default function DashboardPage() {
                   <>
                     Choose a credit package and payment method. Current balance:{" "}
                     <strong>{userCredits.toLocaleString()} credits</strong> (
-                    {getAuthenticationCapacity(userCredits)} authentication
-                    {getAuthenticationCapacity(userCredits) !== 1 ? "s" : ""})
+                    {getAuthenticationCount(userCredits)} authentication
+                    {getAuthenticationCount(userCredits) !== 1 ? "s" : ""})
                   </>
                 )}
               </DialogDescription>
