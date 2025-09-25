@@ -1,10 +1,10 @@
 {
   "/_not-found/page": "/_not-found",
-  "/auth/callback/page": "/auth/callback",
   "/authentications/create/page": "/authentications/create",
+  "/auth/callback/page": "/auth/callback",
   "/authentications/intro/page": "/authentications/intro",
-  "/authentications/page": "/authentications",
   "/billing/page": "/billing",
+  "/authentications/page": "/authentications",
   "/dashboard/page": "/dashboard",
   "/login/page": "/login",
   "/page": "/",
@@ -13,6 +13,6 @@
   "/payment/success/page": "/payment/success",
   "/pricing/page": "/pricing",
   "/profile/page": "/profile",
-  "/settings/page": "/settings",
-  "/register/page": "/register"
+  "/register/page": "/register",
+  "/settings/page": "/settings"
 }
