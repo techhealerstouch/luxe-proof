@@ -9,13 +9,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { FileInput } from "@/components/ui/file-input";
 import { UseFormReturn } from "react-hook-form";
-import { AlertCircle, FileCheck, Upload, Camera, X } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Upload, Camera, X } from "lucide-react";
 import { useState, useEffect } from "react";
 
 type Step1FormProps = {
@@ -94,8 +92,6 @@ export function Step1Form({
     watchImageBack !== null && watchImageBack !== undefined,
     watchImageSide !== null && watchImageSide !== undefined,
   ].filter(Boolean).length;
-
-  const totalRequiredFields = 6;
 
   return (
     <div className="space-y-6">

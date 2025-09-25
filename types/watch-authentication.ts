@@ -4,7 +4,6 @@ export interface DocumentsAudit {
   warranty_card_path?: string;
   purchase_receipt_path?: string;
   service_records_path?: string;
-
   watch_image_front_path?: string;
   watch_image_back_path?: string;
   watch_image_side_path?: string;
@@ -14,6 +13,7 @@ export interface DocumentsAudit {
 }
 
 export interface SerialInfo {
+  watch_serial_info_image_path?: string;
   serial_number?: string;
   model_number?: string;
   serial_found_location?: string;
@@ -23,6 +23,7 @@ export interface SerialInfo {
 }
 
 export interface CaseAnalysis {
+  watch_product_case_analysis_image_path?: string;
   case_material_verified?: boolean;
   case_weight_feel?: string;
   finishing_transitions?: string;
@@ -34,6 +35,7 @@ export interface CaseAnalysis {
 }
 
 export interface DialAnalysis {
+  watch_product_dial_analysis_image_path?: string;
   dial_text_quality?: string;
   lume_application?: string;
   cyclops_magnification?: string;
@@ -42,6 +44,7 @@ export interface DialAnalysis {
 }
 
 export interface BraceletAnalysis {
+  watch_product_bracelet_analysis_image_path?: string;
   bracelet_link_type?: string;
   connection_type?: string;
   clasp_action?: string;
@@ -51,6 +54,7 @@ export interface BraceletAnalysis {
 }
 
 export interface MovementAnalysis {
+  watch_product_movement_analysis_image_path?: string;
   movement_caliber?: string;
   movement_engraving_quality?: string;
   has_cotes_de_geneve?: boolean;
@@ -62,6 +66,7 @@ export interface MovementAnalysis {
 }
 
 export interface PerformanceTest {
+  watch_performance_tests_image_path?: string;
   rate_seconds_per_day?: number;
   amplitude_degrees?: number;
   beat_error_ms?: number;
@@ -76,6 +81,12 @@ export interface WatchAuthentication {
   id: string;
   name: string;
   user_information?: string;
+  email?: string;
+  phone?: string;
+  contact_method?: string;
+  user_type?: string;
+  company_name?: string;
+  company_address?: string;
   brand: string;
   model?: string;
   serial_number?: string;

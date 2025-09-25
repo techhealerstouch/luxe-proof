@@ -1,10 +1,15 @@
 // components/authentications/table-columns.tsx
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import {
   Dialog,
   DialogContent,
@@ -36,10 +41,42 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  SmartphoneNfc,
+  Shield,
+  Package,
+  User,
+  Phone,
+  Mail,
+  Building,
+  Star,
+  Search,
+  Link,
+  QrCode,
+  Camera,
+  X,
+  Nfc,
 } from "lucide-react";
 import { WatchAuthentication } from "@/types/watch-authentication";
 import { toast } from "@/components/ui/use-toast";
 import { EditAuthenticationModal } from "@/components/authentications/edit-authentication-modal";
+
+// NFC Interfaces
+interface NfcLink {
+  id: number;
+  ref_code: string;
+  account_id: number | null;
+  authenticated_products_id: number | null;
+  status: "unused" | "used";
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiResponse<T = any> {
+  success?: boolean;
+  valid?: boolean;
+  message: string;
+  data?: T;
+}
 
 // Helper function to check if edit is allowed (within 3 days of creation)
 const isEditAllowedFor3Days = (createdDate: string | null): boolean => {
@@ -91,6 +128,454 @@ const formatTimeAgo = (dateString: string | null): string => {
   } else {
     return "Just now";
   }
+};
+
+// NFC Management Component
+const NfcManagementModal: React.FC<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  productId: string;
+}> = ({ open, onOpenChange, productId }) => {
+  const [refCode, setRefCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [checkLoading, setCheckLoading] = useState(false);
+  const [qrScanning, setQrScanning] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
+  const [nfcData, setNfcData] = useState<NfcLink | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const authToken = localStorage?.getItem("accessToken") || "";
+
+  const clearMessage = () => {
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  // QR Code scanning functions
+  const startQrScanner = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setQrScanning(true);
+
+        // Start scanning for QR codes
+        scanIntervalRef.current = setInterval(scanQrCode, 500);
+      }
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: "Unable to access camera. Please check permissions.",
+      });
+      clearMessage();
+    }
+  };
+
+  const stopQrScanner = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+
+    setQrScanning(false);
+  };
+
+  const scanQrCode = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+
+    if (!context || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const code = detectQrCode(imageData);
+
+    if (code) {
+      setRefCode(code.toUpperCase());
+      stopQrScanner();
+      setMessage({
+        type: "success",
+        text: `QR Code scanned successfully: ${code}`,
+      });
+      clearMessage();
+    }
+  };
+
+  // Simple QR code detection (placeholder - in production use jsQR)
+  const detectQrCode = (imageData: ImageData): string | null => {
+    // Placeholder for QR detection logic
+    return null;
+  };
+
+  useEffect(() => {
+    return () => {
+      stopQrScanner();
+    };
+  }, []);
+
+  const checkRefCode = async () => {
+    if (!refCode.trim()) {
+      setMessage({ type: "error", text: "Please enter a reference code" });
+      clearMessage();
+      return;
+    }
+
+    setCheckLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/nfc/check-ref-code/${refCode}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      const result: ApiResponse<NfcLink> = await response.json();
+
+      if (result.valid && result.data) {
+        setNfcData(result.data);
+        setMessage({ type: "success", text: result.message });
+      } else {
+        setNfcData(null);
+        setMessage({ type: "error", text: result.message });
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to check reference code" });
+      setNfcData(null);
+    } finally {
+      setCheckLoading(false);
+      clearMessage();
+    }
+  };
+
+  const linkNfc = async () => {
+    if (!refCode.trim() || !productId) {
+      setMessage({
+        type: "error",
+        text: "Please enter both reference code and product ID",
+      });
+      clearMessage();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/nfc/${refCode}/link/${productId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      const result: ApiResponse = await response.json();
+
+      if (result.success) {
+        setMessage({ type: "success", text: result.message });
+        // Refresh the NFC data after successful linking
+        await checkRefCode();
+      } else {
+        setMessage({ type: "error", text: result.message });
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to link NFC" });
+    } finally {
+      setLoading(false);
+      clearMessage();
+    }
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "used":
+        return "default";
+      case "unused":
+        return "secondary";
+      default:
+        return "outline";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    return status === "used" ? (
+      <CheckCircle className="h-4 w-4 text-green-600" />
+    ) : (
+      <XCircle className="h-4 w-4 text-gray-400" />
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Nfc className="h-5 w-5 text-blue-600" />
+            NFC Management
+          </DialogTitle>
+          <DialogDescription>
+            Manage NFC links and verify reference codes for Product ID:{" "}
+            {productId}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-4">
+          {message && (
+            <Alert
+              className={`mb-4 ${
+                message.type === "error"
+                  ? "border-red-200 bg-red-50"
+                  : message.type === "success"
+                  ? "border-green-200 bg-green-50"
+                  : "border-blue-200 bg-blue-50"
+              }`}
+            >
+              <AlertDescription
+                className={`${
+                  message.type === "error"
+                    ? "text-red-800"
+                    : message.type === "success"
+                    ? "text-green-800"
+                    : "text-blue-800"
+                }`}
+              >
+                {message.text}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* QR Scanner Modal */}
+          {qrScanning && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <QrCode className="h-5 w-5" />
+                    Scan QR Code
+                  </h3>
+                  <Button variant="ghost" size="sm" onClick={stopQrScanner}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="relative">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full rounded-lg"
+                  />
+                  <canvas ref={canvasRef} className="hidden" />
+                  <div className="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none">
+                    <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-blue-500"></div>
+                    <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-blue-500"></div>
+                    <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-blue-500"></div>
+                    <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-blue-500"></div>
+                  </div>
+                </div>
+                <p className="text-center text-sm text-gray-600 mt-4">
+                  Position the QR code within the frame to scan
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Tabs defaultValue="check" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="check">Check Reference</TabsTrigger>
+              <TabsTrigger value="link">Link NFC</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="check" className="space-y-4">
+              <div>
+                <h3 className="font-medium mb-3 flex items-center gap-2">
+                  <Search className="h-5 w-5" />
+                  Check Reference Code
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Verify if a reference code is valid and view its current
+                  status
+                </p>
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Label htmlFor="check-ref-code">Reference Code</Label>
+                    <Input
+                      id="check-ref-code"
+                      placeholder="Enter reference code (e.g., ABC123XYZ)"
+                      value={refCode}
+                      onChange={(e) => setRefCode(e.target.value.toUpperCase())}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={startQrScanner}
+                      disabled={qrScanning}
+                      title="Scan QR Code"
+                    >
+                      <QrCode className="h-4 w-4" />
+                    </Button>
+                    <Button onClick={checkRefCode} disabled={checkLoading}>
+                      {checkLoading && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Check Code
+                    </Button>
+                  </div>
+                </div>
+
+                {nfcData && (
+                  <div className="mt-6 p-4 border rounded-lg bg-gray-50">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      NFC Link Details
+                      {getStatusIcon(nfcData.status)}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Reference Code
+                        </Label>
+                        <p className="font-mono font-medium">
+                          {nfcData.ref_code}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Status</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge
+                            variant={getStatusBadgeVariant(nfcData.status)}
+                          >
+                            {nfcData.status.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Account ID
+                        </Label>
+                        <p>{nfcData.account_id || "Not assigned"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Product ID
+                        </Label>
+                        <p>
+                          {nfcData.authenticated_products_id || "Not linked"}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Created</Label>
+                        <p>
+                          {new Date(nfcData.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Updated</Label>
+                        <p>
+                          {new Date(nfcData.updated_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="link" className="space-y-4">
+              <div>
+                <h3 className="font-medium mb-3 flex items-center gap-2">
+                  <Link className="h-5 w-5" />
+                  Link NFC to Product
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Associate an NFC card with this authenticated product
+                </p>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <Label htmlFor="link-ref-code">Reference Code</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        id="link-ref-code"
+                        placeholder="Enter reference code"
+                        value={refCode}
+                        onChange={(e) =>
+                          setRefCode(e.target.value.toUpperCase())
+                        }
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={startQrScanner}
+                        disabled={qrScanning}
+                        title="Scan QR Code"
+                      >
+                        <QrCode className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="product-id">Authenticated Product ID</Label>
+                    <Input
+                      id="product-id"
+                      value={productId}
+                      disabled
+                      className="mt-1 bg-gray-50"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This is automatically set to the current product
+                    </p>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <Button onClick={linkNfc} disabled={loading} className="w-full">
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Link NFC to Product
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 // Updated Status Badge Component
@@ -157,10 +642,14 @@ const TableActions: React.FC<TableActionsProps> = ({
 }) => {
   const [resendLoading, setResendLoading] = useState(false);
   const [voidLoading, setVoidLoading] = useState(false);
+  const [nfcLoading, setNfcLoading] = useState(false);
   const [voidReason, setVoidReason] = useState("");
   const [resendDialogOpen, setResendDialogOpen] = useState(false);
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [nfcDialogOpen, setNfcDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [nfcData, setNfcData] = useState<any>(null);
+  const [nfcManagementOpen, setNfcManagementOpen] = useState(false);
 
   const isDocumentSent =
     watchData.status === "sent" || watchData.document_sent_at;
@@ -168,6 +657,64 @@ const TableActions: React.FC<TableActionsProps> = ({
 
   // Edit is allowed only within 3 days of creation and if not voided
   const canEdit = !isVoided && isEditAllowedFor3Days(watchData.created_at);
+
+  const handleNfcView = async () => {
+    setNfcLoading(true);
+    setNfcData(null);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/nfc/public-profile/${
+          watchData.reference_number || watchData.id
+        }`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.valid && result.data) {
+        setNfcData(result.data);
+      } else {
+        toast({
+          title: "NFC Data Not Found",
+          description:
+            result.message || "No NFC profile found for this product.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("NFC fetch failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load NFC data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setNfcLoading(false);
+    }
+  };
+
+  const getAuthenticityColor = (verdict: string) => {
+    switch (verdict?.toLowerCase()) {
+      case "genuine":
+      case "authentic":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "genuine_with_aftermarket_parts":
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case "counterfeit":
+      case "fake":
+        return "bg-red-100 text-red-800 border-red-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
 
   const handleResend = async () => {
     setResendLoading(true);
@@ -322,6 +869,18 @@ const TableActions: React.FC<TableActionsProps> = ({
           </Button>
         )}
 
+        {/* NFC Button - Opens NFC Management Modal */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-purple-50 border-purple-200"
+          onClick={() => setNfcManagementOpen(true)}
+          title="Manage NFC"
+        >
+          <Nfc className="h-4 w-4 text-purple-600" />
+          <span className="sr-only">Manage NFC</span>
+        </Button>
+
         {/* Resend Document Button - Only show if document was sent */}
         {isDocumentSent && !isVoided && (
           <Button
@@ -361,6 +920,13 @@ const TableActions: React.FC<TableActionsProps> = ({
         )}
       </div>
 
+      {/* NFC Management Modal */}
+      <NfcManagementModal
+        open={nfcManagementOpen}
+        onOpenChange={setNfcManagementOpen}
+        productId={watchData.id}
+      />
+
       {/* Edit Authentication Modal */}
       <EditAuthenticationModal
         open={editModalOpen}
@@ -368,6 +934,294 @@ const TableActions: React.FC<TableActionsProps> = ({
         watchData={watchData}
         onSave={handleEditSave}
       />
+
+      {/* NFC Profile Modal */}
+      <Dialog open={nfcDialogOpen} onOpenChange={setNfcDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SmartphoneNfc className="h-5 w-5 text-purple-600" />
+              NFC Public Profile
+            </DialogTitle>
+            <DialogDescription>
+              This is how the product appears when scanned via NFC
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {nfcLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-2" />
+                  <p className="text-gray-600">Loading NFC profile...</p>
+                </div>
+              </div>
+            ) : nfcData ? (
+              <div className="space-y-6">
+                {/* Authentication Status */}
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-center gap-3 text-center">
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                    <div>
+                      <h3 className="text-lg font-bold text-green-800">
+                        Authenticated Product
+                      </h3>
+                      <p className="text-green-600 text-sm">
+                        Verified on{" "}
+                        {new Date(nfcData.verified_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Basic Information */}
+                <div>
+                  <h4 className="font-medium mb-3 text-blue-800 border-b border-blue-200 pb-1">
+                    Basic Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Reference Code
+                      </Label>
+                      <p className="font-mono font-bold text-lg text-blue-600">
+                        {nfcData.ref_code}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Product ID
+                      </Label>
+                      <p className="font-medium">{nfcData.product.id}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Reference Number
+                      </Label>
+                      <p className="font-medium">
+                        {nfcData.product.reference_number}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product Details */}
+                <div>
+                  <h4 className="font-medium mb-3 text-blue-800 border-b border-blue-200 pb-1">
+                    Product Details
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Product Name
+                      </Label>
+                      <p className="font-medium text-lg">
+                        {nfcData.product.name}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Brand
+                      </Label>
+                      <p className="font-medium">{nfcData.product.brand}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Model
+                      </Label>
+                      <p className="font-medium">{nfcData.product.model}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Date of Sale
+                      </Label>
+                      <p>
+                        {new Date(
+                          nfcData.product.date_of_sale
+                        ).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Est. Production Year
+                      </Label>
+                      <p>{nfcData.product.estimated_production_year}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Status
+                      </Label>
+                      <Badge
+                        variant={
+                          nfcData.status === "used" ? "default" : "secondary"
+                        }
+                        className="mt-1"
+                      >
+                        {nfcData.status?.toUpperCase() || "N/A"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Authenticity Information */}
+                <div>
+                  <h4 className="font-medium mb-3 text-blue-800 border-b border-blue-200 pb-1">
+                    Authenticity Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Authenticity Verdict
+                      </Label>
+                      <div className="mt-1">
+                        <Badge
+                          className={`${getAuthenticityColor(
+                            nfcData.product.authenticity_verdict
+                          )}`}
+                        >
+                          {nfcData.product.authenticity_verdict
+                            ?.replace(/_/g, " ")
+                            .toUpperCase() || "N/A"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Verified At
+                      </Label>
+                      <p>{new Date(nfcData.verified_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  {nfcData.product.final_summary && (
+                    <div className="mt-4">
+                      <Label className="text-muted-foreground font-medium">
+                        Authentication Summary
+                      </Label>
+                      <div className="mt-2 p-3 bg-white rounded-md border border-gray-200">
+                        <p className="text-sm leading-relaxed">
+                          {nfcData.product.final_summary}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Contact Information */}
+                <div>
+                  <h4 className="font-medium mb-3 text-blue-800 border-b border-blue-200 pb-1">
+                    Contact Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Contact Method
+                      </Label>
+                      <Badge variant="outline" className="mt-1 capitalize">
+                        {nfcData.product.contact_method}
+                      </Badge>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Email
+                      </Label>
+                      <p className="break-all">{nfcData.product.email}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Phone
+                      </Label>
+                      <p>{nfcData.product.phone}</p>
+                    </div>
+                    {nfcData.product.company_name && (
+                      <div>
+                        <Label className="text-muted-foreground font-medium">
+                          Company Name
+                        </Label>
+                        <p>{nfcData.product.company_name}</p>
+                      </div>
+                    )}
+                    {nfcData.product.company_address && (
+                      <div className="md:col-span-2">
+                        <Label className="text-muted-foreground font-medium">
+                          Company Address
+                        </Label>
+                        <p>{nfcData.product.company_address}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* System Information */}
+                <div>
+                  <h4 className="font-medium mb-3 text-blue-800 border-b border-blue-200 pb-1">
+                    System Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Account ID
+                      </Label>
+                      <p>{nfcData.product.account_id}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        User ID
+                      </Label>
+                      <p>{nfcData.product.user_id}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Created At
+                      </Label>
+                      <p>
+                        {new Date(nfcData.product.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground font-medium">
+                        Last Updated
+                      </Label>
+                      <p>
+                        {new Date(nfcData.product.updated_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Authentication Badge */}
+                <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-center gap-2 text-center">
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                    <div>
+                      <p className="font-semibold text-green-800">
+                        Authenticated Product
+                      </p>
+                      <p className="text-sm text-green-600">
+                        This product has been verified and authenticated
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <SmartphoneNfc className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600">No NFC profile data available</p>
+                <p className="text-gray-400 text-sm">
+                  This product may not have been set up for NFC scanning yet.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNfcDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Resend Document Dialog */}
       <Dialog open={resendDialogOpen} onOpenChange={setResendDialogOpen}>

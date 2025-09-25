@@ -12,7 +12,6 @@ const api = axios.create({
   },
 });
 
-// ✅ POST request to store an authenticated watch using session token
 const createAuthenticatedWatch = async (data) => {
   try {
     const authToken = localStorage.getItem("accessToken");
@@ -34,6 +33,7 @@ const createAuthenticatedWatch = async (data) => {
       }
     });
 
+    console.log("Final FormData", formData);
     const response = await api.post("/auth-products", formData, {
       headers: {
         Authorization: `Bearer ${authToken}`,

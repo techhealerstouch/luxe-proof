@@ -8,7 +8,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,14 +22,14 @@ type FormValues = {
   model: string;
   user_type: string;
   company_name: string;
-  abn: string;
+  date_of_sale: string;
   company_address: string;
   name: string;
   email: string;
   phone: string;
   contact_method: string;
-  // Step 2 fields
   serial_number: string;
+  reference_number: string;
   model_number: string;
   serial_found_location: string;
   matches_documents: string;
@@ -138,7 +137,18 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-
+        <FormField
+          name={"reference_number" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Reference Number</FormLabel>
+              <FormControl>
+                <Input {...field} value={field.value || ""} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           name={"model" as keyof FormValues}
           render={({ field }) => (
@@ -190,19 +200,6 @@ export function UserInformationForm({
                       value={field.value || ""}
                       autoComplete="organization"
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              name={"abn" as keyof FormValues}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ABN</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -263,8 +260,6 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-
-        {/* Phone */}
         <FormField
           name={"phone" as keyof FormValues}
           render={({ field }) => (
@@ -275,7 +270,25 @@ export function UserInformationForm({
                   {...field}
                   value={field.value || ""}
                   type="tel"
-                  autoComplete="tel"
+                  autoComplete="phone"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* Date of Sale */}
+        <FormField
+          name={"date_of_sale" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date of Sale</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  type="date"
+                  autoComplete="bday"
                 />
               </FormControl>
               <FormMessage />
@@ -319,10 +332,11 @@ export default function Page() {
     defaultValues: {
       brand: "",
       model: "",
+      reference_number: "",
       user_type: "",
       company_name: "",
-      abn: "",
       company_address: "",
+      date_of_sale: "",
       name: "",
       email: "",
       phone: "",

@@ -18,7 +18,6 @@ export const metadata: Metadata = {
     apple: "./icon.svg", // optional (for iOS home screen)
   },
 };
-
 export default function RootLayout({
   children,
 }: {
@@ -28,7 +27,6 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <Toaster position="top-right" richColors closeButton />
-
         <AuthProvider>
           <AuthGuard>{children}</AuthGuard>
         </AuthProvider>
