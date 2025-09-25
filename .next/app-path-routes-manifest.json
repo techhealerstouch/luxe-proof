@@ -1,0 +1,18 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/auth/callback/page": "/auth/callback",
+  "/authentications/create/page": "/authentications/create",
+  "/authentications/intro/page": "/authentications/intro",
+  "/authentications/page": "/authentications",
+  "/billing/page": "/billing",
+  "/dashboard/page": "/dashboard",
+  "/login/page": "/login",
+  "/page": "/",
+  "/nfc/page": "/nfc",
+  "/payment/failure/page": "/payment/failure",
+  "/payment/success/page": "/payment/success",
+  "/pricing/page": "/pricing",
+  "/profile/page": "/profile",
+  "/settings/page": "/settings",
+  "/register/page": "/register"
+}
