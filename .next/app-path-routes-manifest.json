@@ -5,14 +5,14 @@
   "/authentications/intro/page": "/authentications/intro",
   "/billing/page": "/billing",
   "/authentications/page": "/authentications",
-  "/dashboard/page": "/dashboard",
   "/login/page": "/login",
+  "/dashboard/page": "/dashboard",
   "/page": "/",
   "/nfc/page": "/nfc",
   "/payment/failure/page": "/payment/failure",
   "/payment/success/page": "/payment/success",
-  "/pricing/page": "/pricing",
   "/profile/page": "/profile",
+  "/pricing/page": "/pricing",
   "/register/page": "/register",
   "/settings/page": "/settings"
 }
