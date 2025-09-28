@@ -26,7 +26,7 @@ interface DocumentDownloadButtonProps {
 const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
   filePath,
   label,
-  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api",
+  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
 }) => {
   if (!filePath) {
     return (

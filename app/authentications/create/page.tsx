@@ -249,6 +249,7 @@ export default function CreateAuthenticationPage() {
       toast.error("Please complete all required fields");
       return;
     }
+
     // Check credits before submitting
     const currentCredits = getCurrentCredits();
     if (currentCredits < 1000) {
@@ -258,31 +259,20 @@ export default function CreateAuthenticationPage() {
       );
       return;
     }
-
     const watchData = finalValidation.data;
-    console.log("Final watch data:", watchData);
 
     try {
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
-
-      // Deduct credits after successful submission
       const creditDeducted = await deductCredits(1000);
-
       if (!creditDeducted) {
-        // This shouldn't happen since we checked above, but just in case
         setIsSubmitting(false);
         return;
       }
-
-      // Clear validation after successful submission
       localStorage.removeItem("validated_serial");
       localStorage.removeItem("serial_validation_timestamp");
-
       setActiveTab("user-info");
       setCompletedTabs(new Set());
       reset();
-
-      // router.push("/authentications/intro");
     } catch (error) {
       setIsSubmitting(false);
       toast.error("Failed to submit authenticated watch data");

@@ -1,17 +1,13 @@
 import axios from "axios";
 import { toast } from "sonner";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     Accept: "application/json",
-    // Remove Content-Type from default headers - let each request set its own
   },
 });
-
 const createAuthenticatedWatch = async (data) => {
   try {
     const authToken = localStorage.getItem("accessToken");
@@ -22,13 +18,10 @@ const createAuthenticatedWatch = async (data) => {
       const value = data[key];
 
       if (value instanceof File) {
-        // Handle file uploads
         formData.append(key, value);
       } else if (typeof value === "boolean") {
-        // Convert boolean to string for Laravel
         formData.append(key, value ? "1" : "0");
       } else if (value !== null && value !== undefined && value !== "") {
-        // Handle other form fields
         formData.append(key, value.toString());
       }
     });
@@ -37,7 +30,6 @@ const createAuthenticatedWatch = async (data) => {
     const response = await api.post("/auth-products", formData, {
       headers: {
         Authorization: `Bearer ${authToken}`,
-        // Let browser set Content-Type with boundary for multipart/form-data
       },
     });
 
@@ -54,7 +46,6 @@ const createAuthenticatedWatch = async (data) => {
   }
 };
 
-// For other API calls that don't involve file uploads, you might want separate functions
 const apiCall = async (method, endpoint, data = null) => {
   try {
     const authToken = localStorage.getItem("accessToken");

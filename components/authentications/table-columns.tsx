@@ -17,7 +17,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -42,17 +41,9 @@ import {
   XCircle,
   Clock,
   SmartphoneNfc,
-  Shield,
-  Package,
-  User,
-  Phone,
-  Mail,
-  Building,
-  Star,
   Search,
   Link,
   QrCode,
-  Camera,
   X,
   Nfc,
 } from "lucide-react";
@@ -638,16 +629,18 @@ const TableActions: React.FC<TableActionsProps> = ({
   watchData,
   onView,
   onEdit,
-  onDownloadPDF,
+  onDownloadPDF, // We'll keep this prop but change its usage
 }) => {
   const [resendLoading, setResendLoading] = useState(false);
   const [voidLoading, setVoidLoading] = useState(false);
   const [nfcLoading, setNfcLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false); // New state for email sending
   const [voidReason, setVoidReason] = useState("");
   const [resendDialogOpen, setResendDialogOpen] = useState(false);
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [nfcDialogOpen, setNfcDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false); // New state for email dialog
   const [nfcData, setNfcData] = useState<any>(null);
   const [nfcManagementOpen, setNfcManagementOpen] = useState(false);
 
@@ -658,6 +651,54 @@ const TableActions: React.FC<TableActionsProps> = ({
   // Edit is allowed only within 3 days of creation and if not voided
   const canEdit = !isVoided && isEditAllowedFor3Days(watchData.created_at);
 
+  // New function to handle email certificate sending
+  const handleSendEmailCertificate = async () => {
+    setEmailLoading(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/authentications/${watchData.id}/send-certificate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: watchData.email,
+            includeImages: true, // Include watch images in PDF
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to send certificate");
+      }
+
+      toast({
+        title: "Certificate Sent Successfully",
+        description: `Authentication certificate has been sent to ${watchData.email}`,
+        variant: "default",
+      });
+
+      setEmailDialogOpen(false);
+
+      // Optionally refresh the page to update the status
+      window.location.reload();
+    } catch (error) {
+      console.error("Email certificate failed:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to send certificate. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
   const handleNfcView = async () => {
     setNfcLoading(true);
     setNfcData(null);
@@ -856,7 +897,7 @@ const TableActions: React.FC<TableActionsProps> = ({
         )}
 
         {/* Download PDF Button */}
-        {!isVoided && watchData.authenticity_verdict && (
+        {/* {!isVoided && watchData.authenticity_verdict && (
           <Button
             variant="outline"
             size="sm"
@@ -867,8 +908,25 @@ const TableActions: React.FC<TableActionsProps> = ({
             <Download className="h-4 w-4 text-green-600" />
             <span className="sr-only">Download PDF</span>
           </Button>
+        )} */}
+        {/* Email Certificate Button - Replaces Download PDF */}
+        {!isVoided && watchData.authenticity_verdict && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 hover:bg-green-50 border-green-200"
+            onClick={() => setEmailDialogOpen(true)}
+            disabled={emailLoading}
+            title="Send authentication certificate via email"
+          >
+            {emailLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+            ) : (
+              <Send className="h-4 w-4 text-green-600" />
+            )}
+            <span className="sr-only">Send Certificate</span>
+          </Button>
         )}
-
         {/* NFC Button - Opens NFC Management Modal */}
         <Button
           variant="outline"
@@ -934,7 +992,117 @@ const TableActions: React.FC<TableActionsProps> = ({
         watchData={watchData}
         onSave={handleEditSave}
       />
+      {/* Email Certificate Dialog - New Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-green-500" />
+              Send Authentication Certificate
+            </DialogTitle>
+            <DialogDescription>
+              This will generate and send the authentication certificate as a
+              PDF attachment to the client's email address.
+            </DialogDescription>
+          </DialogHeader>
 
+          <div className="grid gap-4 py-4">
+            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+              <h4 className="font-medium text-sm">Certificate Details</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Brand:</span>
+                  <span className="ml-2 font-medium">{watchData.brand}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Model:</span>
+                  <span className="ml-2 font-medium">
+                    {watchData.model || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Serial:</span>
+                  <span className="ml-2 font-mono text-xs">
+                    {watchData.serial_number ||
+                      watchData.serial_and_model_number_cross_reference
+                        ?.serial_number ||
+                      "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Verdict:</span>
+                  <span className="ml-2 font-medium">
+                    {watchData.authenticity_verdict || "N/A"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 p-3 rounded-md">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-green-800">Email Details</p>
+                  <p className="text-green-700">
+                    <strong>Recipient:</strong> {watchData.email}
+                  </p>
+                  <p className="text-green-700 text-xs mt-1">
+                    The certificate will be sent as a PDF attachment with all
+                    authentication details and images.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {isDocumentSent && (
+              <div className="text-sm space-y-1 bg-blue-50 p-3 rounded-md">
+                <p className="font-medium text-blue-800">Previous Sends</p>
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Originally sent:</span>
+                  <span className="text-blue-700">
+                    {new Date(watchData.document_sent_at).toLocaleDateString()}
+                  </span>
+                </div>
+                {(watchData.resend_count || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">Times resent:</span>
+                    <span className="text-blue-700">
+                      {watchData.resend_count}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEmailDialogOpen(false)}
+              disabled={emailLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmailCertificate}
+              disabled={emailLoading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {emailLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending Certificate...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Certificate
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* NFC Profile Modal */}
       <Dialog open={nfcDialogOpen} onOpenChange={setNfcDialogOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">

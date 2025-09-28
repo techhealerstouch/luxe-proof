@@ -119,7 +119,6 @@ export const deductCredits = async (amount: number): Promise<boolean> => {
         withCredentials: true, // Add this if using Sanctum
       }
     );
-
     return response.data.success;
   } catch (error) {
     console.error("Error deducting credits:", error);

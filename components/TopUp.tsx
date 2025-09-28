@@ -71,7 +71,7 @@ const createInvoice = async (
 
   try {
     const response = await axios.post(
-      `http://localhost:8000/api/authenticator/top-up`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/top-up`,
       {
         user_id: userId,
         package: packageData.name,
