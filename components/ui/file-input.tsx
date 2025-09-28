@@ -38,11 +38,15 @@ const FileInput = ({
   const [uploadProgress, setUploadProgress] = React.useState<{
     [key: string]: number;
   }>({});
+  const [uploadingFiles, setUploadingFiles] = React.useState<Set<string>>(
+    new Set()
+  );
   const [errors, setErrors] = React.useState<string[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Determine if this is single file mode
   const isSingleFile = maxFiles === 1;
+
   const getFileIcon = (file: File) => {
     const fileType = file?.type || "";
     const fileName = file?.name || "";
@@ -61,6 +65,7 @@ const FileInput = ({
       return <FileText className="h-4 w-4 text-gray-500" />;
     }
   };
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -120,44 +125,64 @@ const FileInput = ({
     return { validFiles, errors: newErrors };
   };
 
-  const handleFiles = (files: FileList | File[]) => {
+  const simulateUpload = (file: File, fileKey: string): Promise<void> => {
+    return new Promise((resolve) => {
+      setUploadingFiles((prev) => new Set(prev).add(fileKey));
+      setUploadProgress((prev) => ({ ...prev, [fileKey]: 0 }));
+
+      const interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          const currentProgress = prev[fileKey] || 0;
+          if (currentProgress >= 100) {
+            clearInterval(interval);
+            // Clean up after upload completes
+            setTimeout(() => {
+              setUploadProgress((prev) => {
+                const newProgress = { ...prev };
+                delete newProgress[fileKey];
+                return newProgress;
+              });
+              setUploadingFiles((prev) => {
+                const newSet = new Set(prev);
+                newSet.delete(fileKey);
+                return newSet;
+              });
+              resolve();
+            }, 500);
+            return prev;
+          }
+          return { ...prev, [fileKey]: currentProgress + 20 };
+        });
+      }, 200);
+    });
+  };
+
+  const handleFiles = async (files: FileList | File[]) => {
     const filesArray = Array.from(files);
     const { validFiles, errors: validationErrors } = validateFiles(filesArray);
 
     setErrors(validationErrors);
 
     if (validFiles.length > 0) {
-      // Simulate upload progress for each file
-      validFiles.forEach((file, index) => {
-        const fileKey = `${file.name}-${Date.now()}-${index}`;
-        setUploadProgress((prev) => ({ ...prev, [fileKey]: 0 }));
-
-        // Simulate upload progress
-        const interval = setInterval(() => {
-          setUploadProgress((prev) => {
-            const currentProgress = prev[fileKey] || 0;
-            if (currentProgress >= 100) {
-              clearInterval(interval);
-              // Remove progress after completion
-              setTimeout(() => {
-                setUploadProgress((prev) => {
-                  const newProgress = { ...prev };
-                  delete newProgress[fileKey];
-                  return newProgress;
-                });
-              }, 1000);
-              return prev;
-            }
-            return { ...prev, [fileKey]: currentProgress + 20 };
-          });
-        }, 200);
-      });
-
-      // For single file mode, replace the current file
+      // For single file mode, replace the current file immediately
       if (isSingleFile) {
+        const file = validFiles[0];
+        const fileKey = `${file.name}-${Date.now()}`;
+
+        // Start upload simulation
+        simulateUpload(file, fileKey);
+
+        // Update files immediately
         onChange?.(validFiles);
       } else {
+        // For multiple files, add them immediately and simulate upload
         onChange?.([...(value || []), ...validFiles]);
+
+        // Simulate upload for each file
+        validFiles.forEach((file, index) => {
+          const fileKey = `${file.name}-${Date.now()}-${index}`;
+          simulateUpload(file, fileKey);
+        });
       }
     }
 
@@ -217,83 +242,87 @@ const FileInput = ({
   const clearAllFiles = () => {
     onChange?.([]);
     setErrors([]);
+    setUploadProgress({});
+    setUploadingFiles(new Set());
   };
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Drop Zone */}
-      <div
-        onClick={() => !disabled && inputRef.current?.click()}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={cn(
-          "relative cursor-pointer rounded-lg border-2 border-dashed px-6 py-8 text-center transition-all duration-200",
-          isDragging
-            ? "border-blue-400 bg-blue-50 scale-105 shadow-lg"
-            : "border-gray-300 hover:border-gray-400 hover:bg-gray-50",
-          disabled &&
-            "cursor-not-allowed opacity-60 hover:border-gray-300 hover:bg-transparent"
-        )}
-        role="button"
-        tabIndex={0}
-        aria-disabled={disabled}
-        aria-label={`Upload ${
-          isSingleFile ? "file" : "files"
-        }. Accepted formats: ${accept}. Max size: ${maxSize}MB per file.`}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept={accept}
-          multiple={!isSingleFile}
-          disabled={disabled}
-          onChange={handleChange}
-          className="hidden"
-          aria-describedby="file-upload-description"
-        />
+      {/* Drop Zone - Only show when no files or in multi-file mode */}
+      {(value.length === 0 || !isSingleFile) && (
+        <div
+          onClick={() => !disabled && inputRef.current?.click()}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            "relative cursor-pointer rounded-lg border-2 border-dashed px-6 py-8 text-center transition-all duration-200",
+            isDragging
+              ? "border-blue-400 bg-blue-50 scale-105 shadow-lg"
+              : "border-gray-300 hover:border-gray-400 hover:bg-gray-50",
+            disabled &&
+              "cursor-not-allowed opacity-60 hover:border-gray-300 hover:bg-transparent"
+          )}
+          role="button"
+          tabIndex={0}
+          aria-disabled={disabled}
+          aria-label={`Upload ${
+            isSingleFile ? "file" : "files"
+          }. Accepted formats: ${accept}. Max size: ${maxSize}MB per file.`}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept={accept}
+            multiple={!isSingleFile}
+            disabled={disabled}
+            onChange={handleChange}
+            className="hidden"
+            aria-describedby="file-upload-description"
+          />
 
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className={cn(
-              "rounded-full p-3 transition-colors",
-              isDragging ? "bg-blue-100" : "bg-gray-100"
-            )}
-          >
-            <Upload
+          <div className="flex flex-col items-center gap-3">
+            <div
               className={cn(
-                "h-8 w-8 transition-colors",
-                isDragging ? "text-blue-600" : "text-gray-400"
+                "rounded-full p-3 transition-colors",
+                isDragging ? "bg-blue-100" : "bg-gray-100"
               )}
-            />
-          </div>
+            >
+              <Upload
+                className={cn(
+                  "h-8 w-8 transition-colors",
+                  isDragging ? "text-blue-600" : "text-gray-400"
+                )}
+              />
+            </div>
 
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
-              <span className="text-blue-600 hover:text-blue-800 transition-colors">
-                Click to upload
-              </span>
-              <span className="text-gray-500"> or drag and drop</span>
-            </p>
-            <p id="file-upload-description" className="text-xs text-gray-400">
-              {accept.includes("image") && "Images"}
-              {accept.includes("image") && accept.includes(".pdf") && " & "}
-              {accept.includes(".pdf") && "PDF"}
-              {isSingleFile
-                ? ` up to ${maxSize}MB`
-                : ` up to ${maxSize}MB each (max ${maxFiles} files)`}
-            </p>
-          </div>
-        </div>
-
-        {isDragging && (
-          <div className="absolute inset-0 bg-blue-100 bg-opacity-50 rounded-lg flex items-center justify-center">
-            <div className="text-blue-600 font-medium">
-              Drop {isSingleFile ? "file" : "files"} here
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                <span className="text-blue-600 hover:text-blue-800 transition-colors">
+                  Click to upload
+                </span>
+                <span className="text-gray-500"> or drag and drop</span>
+              </p>
+              <p id="file-upload-description" className="text-xs text-gray-400">
+                {accept.includes("image") && "Images"}
+                {accept.includes("image") && accept.includes(".pdf") && " & "}
+                {accept.includes(".pdf") && "PDF"}
+                {isSingleFile
+                  ? ` up to ${maxSize}MB`
+                  : ` up to ${maxSize}MB each (max ${maxFiles} files)`}
+              </p>
             </div>
           </div>
-        )}
-      </div>
+
+          {isDragging && (
+            <div className="absolute inset-0 bg-blue-100 bg-opacity-50 rounded-lg flex items-center justify-center">
+              <div className="text-blue-600 font-medium">
+                Drop {isSingleFile ? "file" : "files"} here
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Error Messages */}
       {errors.length > 0 && (
@@ -348,19 +377,16 @@ const FileInput = ({
             {value.map((file, index) => {
               const fileKey = `${file.name}-${Date.now()}-${index}`;
               const progress = uploadProgress[fileKey];
-              const isUploading = progress !== undefined && progress < 100;
-              const isComplete = progress === 100;
+              const isUploading = uploadingFiles.has(fileKey);
 
               return (
                 <div
                   key={`${file.name}-${index}`}
                   className={cn(
                     "flex items-center gap-3 p-3 rounded-lg border transition-all duration-200",
-                    isComplete
-                      ? "bg-green-50 border-green-200"
-                      : isUploading
+                    isUploading
                       ? "bg-blue-50 border-blue-200"
-                      : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                      : "bg-green-50 border-green-200 hover:bg-green-100"
                   )}
                 >
                   <div className="flex-shrink-0">{getFileIcon(file)}</div>
@@ -370,7 +396,7 @@ const FileInput = ({
                       <p className="text-sm font-medium text-gray-900 truncate">
                         {file.name}
                       </p>
-                      {isComplete && (
+                      {!isUploading && (
                         <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                       )}
                     </div>
@@ -379,13 +405,19 @@ const FileInput = ({
                       {formatFileSize(file.size)}
                     </p>
 
-                    {isUploading && (
+                    {isUploading && progress !== undefined && (
                       <div className="mt-2">
                         <Progress value={progress} className="h-1" />
                         <p className="text-xs text-blue-600 mt-1">
                           Uploading... {Math.round(progress)}%
                         </p>
                       </div>
+                    )}
+
+                    {!isUploading && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Upload complete
+                      </p>
                     )}
                   </div>
 
@@ -404,6 +436,21 @@ const FileInput = ({
               );
             })}
           </div>
+
+          {/* Add more files button for single file mode when file is uploaded */}
+          {isSingleFile && value.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => inputRef.current?.click()}
+              disabled={disabled}
+              className="w-full"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Replace File
+            </Button>
+          )}
         </div>
       )}
     </div>

@@ -500,7 +500,7 @@ export function EditAuthenticationModal({
 
       const response = await axios.post(
         // Use POST with _method=PUT for file uploads
-        `http://localhost:8000/api/auth-products/${watchData.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth-products/${watchData.id}`,
         formData,
         {
           headers: {

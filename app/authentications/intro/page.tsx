@@ -8,20 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/dashboard-layout";
-import {
-  Plus,
-  Shield,
-  User,
-  CheckCircle,
-  Award,
-  Search,
-  AlertCircle,
-  Icon,
-} from "lucide-react";
+import { Plus, User, CheckCircle, Search, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import IconCompany from "@/components/icon";
 export default function Intro() {
-  const router = useRouter();
   const [serialNumber, setSerialNumber] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
@@ -76,9 +66,7 @@ export default function Intro() {
 
       // Configure axios request
       const response = await axios.post(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-        }/api/auth-products/check-serial`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth-products/check-serial`,
         {
           serial_number: serialNumber.trim(),
         },
