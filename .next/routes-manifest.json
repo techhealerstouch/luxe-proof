@@ -76,6 +76,12 @@
       "namedRegex": "^/nfc(?:/)?$"
     },
     {
+      "page": "/nfc-public-view",
+      "regex": "^/nfc\\-public\\-view(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/nfc\\-public\\-view(?:/)?$"
+    },
+    {
       "page": "/payment/failure",
       "regex": "^/payment/failure(?:/)?$",
       "routeKeys": {},

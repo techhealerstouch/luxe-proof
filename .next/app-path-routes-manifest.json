@@ -1,18 +1,19 @@
 {
   "/_not-found/page": "/_not-found",
   "/authentications/create/page": "/authentications/create",
-  "/auth/callback/page": "/auth/callback",
   "/authentications/intro/page": "/authentications/intro",
+  "/auth/callback/page": "/auth/callback",
+  "/nfc-public-view/page": "/nfc-public-view",
   "/billing/page": "/billing",
   "/authentications/page": "/authentications",
-  "/login/page": "/login",
-  "/dashboard/page": "/dashboard",
   "/page": "/",
-  "/nfc/page": "/nfc",
+  "/dashboard/page": "/dashboard",
+  "/login/page": "/login",
   "/payment/failure/page": "/payment/failure",
-  "/payment/success/page": "/payment/success",
-  "/profile/page": "/profile",
+  "/nfc/page": "/nfc",
   "/pricing/page": "/pricing",
-  "/register/page": "/register",
-  "/settings/page": "/settings"
+  "/settings/page": "/settings",
+  "/profile/page": "/profile",
+  "/payment/success/page": "/payment/success",
+  "/register/page": "/register"
 }

@@ -1,18 +1,19 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/authentications/create/page": "app/authentications/create/page.js",
-  "/auth/callback/page": "app/auth/callback/page.js",
   "/authentications/intro/page": "app/authentications/intro/page.js",
+  "/auth/callback/page": "app/auth/callback/page.js",
+  "/nfc-public-view/page": "app/nfc-public-view/page.js",
   "/billing/page": "app/billing/page.js",
   "/authentications/page": "app/authentications/page.js",
-  "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
   "/page": "app/page.js",
-  "/nfc/page": "app/nfc/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/login/page": "app/login/page.js",
   "/payment/failure/page": "app/payment/failure/page.js",
-  "/payment/success/page": "app/payment/success/page.js",
-  "/profile/page": "app/profile/page.js",
+  "/nfc/page": "app/nfc/page.js",
   "/pricing/page": "app/pricing/page.js",
-  "/register/page": "app/register/page.js",
-  "/settings/page": "app/settings/page.js"
+  "/settings/page": "app/settings/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/payment/success/page": "app/payment/success/page.js",
+  "/register/page": "app/register/page.js"
 }
