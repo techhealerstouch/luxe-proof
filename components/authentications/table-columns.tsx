@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import axios from "axios";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { generateAuthenticationPDFBlob } from "@/utils/pdf-generator";
 import {
   Dialog,
   DialogContent,
@@ -650,32 +652,35 @@ const TableActions: React.FC<TableActionsProps> = ({
 
   // Edit is allowed only within 3 days of creation and if not voided
   const canEdit = !isVoided && isEditAllowedFor3Days(watchData.created_at);
-
-  // New function to handle email certificate sending
   const handleSendEmailCertificate = async () => {
     setEmailLoading(true);
+    toast({
+      title: "Generating Certificate...",
+      description:
+        "Please wait while we create your PDF certificate. This may take 30-60 seconds.",
+      variant: "default",
+    });
+
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(
+
+      // Send to backend
+      const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/authentications/${watchData.id}/send-certificate`,
         {
-          method: "POST",
+          email: watchData.email,
+        },
+        {
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            email: watchData.email,
-            includeImages: true, // Include watch images in PDF
-          }),
+          timeout: 30000, // 30 second timeout for PDF generation
         }
       );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to send certificate");
-      }
+      const result = await response.data;
 
       toast({
         title: "Certificate Sent Successfully",
@@ -684,8 +689,6 @@ const TableActions: React.FC<TableActionsProps> = ({
       });
 
       setEmailDialogOpen(false);
-
-      // Optionally refresh the page to update the status
       window.location.reload();
     } catch (error) {
       console.error("Email certificate failed:", error);
@@ -699,55 +702,12 @@ const TableActions: React.FC<TableActionsProps> = ({
       setEmailLoading(false);
     }
   };
-  const handleNfcView = async () => {
-    setNfcLoading(true);
-    setNfcData(null);
-
-    try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/nfc/public-profile/${
-          watchData.reference_number || watchData.id
-        }`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.valid && result.data) {
-        setNfcData(result.data);
-      } else {
-        toast({
-          title: "NFC Data Not Found",
-          description:
-            result.message || "No NFC profile found for this product.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("NFC fetch failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load NFC data. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setNfcLoading(false);
-    }
-  };
-
   const getAuthenticityColor = (verdict: string) => {
     switch (verdict?.toLowerCase()) {
-      case "genuine":
-      case "authentic":
+      case "Genuine":
+      case "Authentic":
         return "bg-green-100 text-green-800 border-green-300";
-      case "genuine_with_aftermarket_parts":
+      case "Genuine (Aftermarket)":
         return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "counterfeit":
       case "fake":
@@ -897,7 +857,7 @@ const TableActions: React.FC<TableActionsProps> = ({
         )}
 
         {/* Download PDF Button */}
-        {/* {!isVoided && watchData.authenticity_verdict && (
+        {!isVoided && watchData.authenticity_verdict && (
           <Button
             variant="outline"
             size="sm"
@@ -908,7 +868,7 @@ const TableActions: React.FC<TableActionsProps> = ({
             <Download className="h-4 w-4 text-green-600" />
             <span className="sr-only">Download PDF</span>
           </Button>
-        )} */}
+        )}
         {/* Email Certificate Button - Replaces Download PDF */}
         {!isVoided && watchData.authenticity_verdict && (
           <Button
@@ -938,25 +898,6 @@ const TableActions: React.FC<TableActionsProps> = ({
           <Nfc className="h-4 w-4 text-purple-600" />
           <span className="sr-only">Manage NFC</span>
         </Button>
-
-        {/* Resend Document Button - Only show if document was sent */}
-        {isDocumentSent && !isVoided && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0 hover:bg-blue-50 border-blue-200"
-            onClick={() => setResendDialogOpen(true)}
-            disabled={resendLoading}
-            title="Resend authentication certificate"
-          >
-            {resendLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4 text-blue-600" />
-            )}
-            <span className="sr-only">Resend document</span>
-          </Button>
-        )}
 
         {/* Void Process Button - Only show if not voided */}
         {!isVoided && (
@@ -1053,26 +994,6 @@ const TableActions: React.FC<TableActionsProps> = ({
                 </div>
               </div>
             </div>
-
-            {isDocumentSent && (
-              <div className="text-sm space-y-1 bg-blue-50 p-3 rounded-md">
-                <p className="font-medium text-blue-800">Previous Sends</p>
-                <div className="flex justify-between">
-                  <span className="text-blue-700">Originally sent:</span>
-                  <span className="text-blue-700">
-                    {new Date(watchData.document_sent_at).toLocaleDateString()}
-                  </span>
-                </div>
-                {(watchData.resend_count || 0) > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-blue-700">Times resent:</span>
-                    <span className="text-blue-700">
-                      {watchData.resend_count}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           <DialogFooter>
@@ -1386,123 +1307,6 @@ const TableActions: React.FC<TableActionsProps> = ({
           <DialogFooter>
             <Button variant="outline" onClick={() => setNfcDialogOpen(false)}>
               Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Resend Document Dialog */}
-      <Dialog open={resendDialogOpen} onOpenChange={setResendDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Send className="h-5 w-5 text-blue-500" />
-              Resend Authentication Certificate
-            </DialogTitle>
-            <DialogDescription>
-              This will resend the authentication certificate to the registered
-              email address.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-              <h4 className="font-medium text-sm">Watch Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Brand:</span>
-                  <span className="ml-2 font-medium">{watchData.brand}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Model:</span>
-                  <span className="ml-2 font-medium">
-                    {watchData.model || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Serial:</span>
-                  <span className="ml-2 font-mono text-xs">
-                    {watchData.serial_number ||
-                      watchData.serial_and_model_number_cross_reference
-                        ?.serial_number ||
-                      "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Verdict:</span>
-                  <span className="ml-2 font-medium">
-                    {watchData.authenticity_verdict || "N/A"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {watchData.document_sent_at && (
-              <div className="text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Originally sent:
-                  </span>
-                  <span>
-                    {new Date(watchData.document_sent_at).toLocaleDateString()}
-                  </span>
-                </div>
-                {(watchData.resend_count || 0) > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Times resent:</span>
-                    <span>{watchData.resend_count}</span>
-                  </div>
-                )}
-                {watchData.last_resent_at && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last resent:</span>
-                    <span>
-                      {new Date(watchData.last_resent_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {(watchData.resend_count || 0) >= 2 && (
-              <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-yellow-800">
-                    Multiple Resends Detected
-                  </p>
-                  <p className="text-yellow-700">
-                    This certificate has been resent {watchData.resend_count}{" "}
-                    times. Consider contacting the recipient directly.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setResendDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleResend}
-              disabled={resendLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {resendLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Resend Certificate
-                </>
-              )}
             </Button>
           </DialogFooter>
         </DialogContent>

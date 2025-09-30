@@ -9,9 +9,7 @@ export const UserInformationSchema = z.object({
   user_type: z.enum(["personal", "company"], {
     required_error: "Please select a user type",
   }),
-  reference_number: z
-    .string()
-    .min(1, { message: "Reference Number is required" }),
+
   date_of_sale: z.string().optional(),
   company_name: z.string().optional(),
   abn: z.string().optional(),
@@ -328,7 +326,7 @@ export const step7Schema = z.object({
 
 export const step8Schema = z.object({
   authenticity_verdict: z.enum(
-    ["genuine", "counterfeit", "genuine_with_aftermarket_parts"],
+    ["Genuine", "Counterfeit", "Genuine (Aftermarket)"],
     {
       required_error: "Please select an authenticity verdict.",
     }

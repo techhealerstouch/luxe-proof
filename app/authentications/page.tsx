@@ -64,7 +64,7 @@ import { useAuthenticationData } from "@/hooks/use-authentication-data";
 import { createTableColumns } from "@/components/authentications/table-columns";
 import { WatchViewModal } from "@/components/watch-details/watch-view-modal";
 import { generateAuthenticationPDF } from "@/utils/pdf-generator";
-import { useUserDetails, useProvenanceAudit } from "@/hooks/useDetails";
+// import { useUserDetails, useProvenanceAudit } from "@/hooks/useDetails";
 
 // Debounce hook
 function useDebounce<T>(value: T, delay = 300): T {
@@ -185,8 +185,7 @@ export default function AuthenticationsPage() {
   const debouncedSearch = useDebounce(search, 250);
   const { authentications, isLoading, error, fetchData } =
     useAuthenticationData();
-  const { detailsMap, loadingMap } = useUserDetails();
-  const {} = useProvenanceAudit();
+  // const {} = useProvenanceAudit();
 
   // Effects
   useEffect(() => {

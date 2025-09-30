@@ -64,8 +64,8 @@ export function Step8Form({ form, onSubmit, onBack, step }: Step8FormProps) {
                     <SelectContent>
                       <SelectItem value="genuine">Genuine</SelectItem>
                       <SelectItem value="counterfeit">Counterfeit</SelectItem>
-                      <SelectItem value="genuine_with_aftermarket_parts">
-                        Genuine with Aftermarket Parts
+                      <SelectItem value="genuine (aftermarket)">
+                        Genuine (Aftermarket)
                       </SelectItem>
                     </SelectContent>
                   </Select>
