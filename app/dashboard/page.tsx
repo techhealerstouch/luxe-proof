@@ -52,9 +52,6 @@ import {
   CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
-import CreditsDisplay from "@/components/CreditsDisplay";
-import TopUp from "@/components/TopUp";
-import ApiCreditStatus from "@/components/ApiCreditStatus";
 
 // Import credits service functions
 import {
@@ -732,46 +729,7 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Credit Status Alert */}
-        {isClient &&
-          !creditsLoading &&
-          (creditStatus.status === "empty" ||
-            creditStatus.status === "low") && (
-            <Card className={`border ${creditStatus.bgColor}`}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle
-                      className={`h-5 w-5 ${creditStatus.color}`}
-                    />
-                    <div>
-                      <h3
-                        className={`font-semibold ${creditStatus.color} mb-1`}
-                      >
-                        {creditStatus.status === "empty"
-                          ? "No Credits"
-                          : "Low Credits"}
-                      </h3>
-                      <p className={`text-sm ${creditStatus.color}/80`}>
-                        {creditStatus.message}. You need 1000 credits to perform
-                        an authentication.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={() => setTopUpDialogOpen(true)}
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Top Up Credits
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -788,7 +746,18 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
-
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total NFC</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats?.totalAuthentications?.toLocaleString() || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">NFC Total Client</p>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -861,14 +830,6 @@ export default function DashboardPage() {
                         }`}
                       />
                       Refresh
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => setTopUpDialogOpen(true)}
-                      className="w-full"
-                    >
-                      <CreditCard className="w-3 h-3 mr-1" />
-                      Top Up
                     </Button>
                   </div>
                 </div>

@@ -68,18 +68,7 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-        <FormField
-          name={"reference_number" as keyof FormValues}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Reference Number</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value || ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
         <FormField
           name={"model" as keyof FormValues}
           render={({ field }) => (

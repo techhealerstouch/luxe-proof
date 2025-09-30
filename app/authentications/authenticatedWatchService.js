@@ -1,7 +1,7 @@
 import axios from "axios";
 import { toast } from "sonner";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -26,12 +26,15 @@ const createAuthenticatedWatch = async (data) => {
       }
     });
 
-    console.log("Final FormData", formData);
-    const response = await api.post("/auth-products", formData, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
+    const response = await api.post(
+      `${API_BASE_URL}/api/auth-products`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
 
     toast.success("Authenticated watch saved successfully!");
     return response.data;

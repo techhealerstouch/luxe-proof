@@ -29,7 +29,6 @@ type FormValues = {
   phone: string;
   contact_method: string;
   serial_number: string;
-  reference_number: string;
   model_number: string;
   serial_found_location: string;
   matches_documents: string;
@@ -137,18 +136,7 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-        <FormField
-          name={"reference_number" as keyof FormValues}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Reference Number</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value || ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
         <FormField
           name={"model" as keyof FormValues}
           render={({ field }) => (
@@ -332,7 +320,6 @@ export default function Page() {
     defaultValues: {
       brand: "",
       model: "",
-      reference_number: "",
       user_type: "",
       company_name: "",
       company_address: "",

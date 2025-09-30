@@ -110,7 +110,7 @@ export const fetchCredits = async (): Promise<number> => {
 export const deductCredits = async (amount: number): Promise<boolean> => {
   try {
     const response = await axios.put<DeductCreditsResponse>(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/deduct-credits`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/credits/deduct`,
       {
         amount: amount,
       },

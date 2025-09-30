@@ -9,9 +9,6 @@ class ApiInterceptor {
     this.baseUrl = baseUrl;
   }
 
-  /**
-   * Helper to mark login time & token expiry when we get a new token
-   */
   setAccessToken(token: string, expiresIn?: number) {
     localStorage.setItem("accessToken", token);
 

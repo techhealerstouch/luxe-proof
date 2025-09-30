@@ -132,7 +132,10 @@ export default function CreateAuthenticationPage() {
   const [activeTab, setActiveTab] = useState("user-info");
   const [completedTabs, setCompletedTabs] = useState<Set<string>>(new Set());
   const emptySchema = z.object({});
-
+  const creditValue = parseInt(
+    process.env.DEDUCT_CREDITS_WATCH_AUTHENTICATION || "1000",
+    10
+  );
   // Check validation on component mount
   useEffect(() => {
     const checkValidation = () => {
@@ -263,7 +266,8 @@ export default function CreateAuthenticationPage() {
 
     try {
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
-      const creditDeducted = await deductCredits(1000);
+
+      const creditDeducted = await deductCredits(creditValue);
       if (!creditDeducted) {
         setIsSubmitting(false);
         return;
@@ -319,7 +323,7 @@ export default function CreateAuthenticationPage() {
     const watchData = finalValidation.data;
 
     try {
-      const deductResult = await deductCredits(1000);
+      const deductResult = await deductCredits(creditValue);
       if (!deductResult) {
         throw new Error(deductResult.message || "Failed to deduct credits");
       }

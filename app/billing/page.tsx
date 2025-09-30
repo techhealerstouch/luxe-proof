@@ -15,9 +15,7 @@ import type {
   PaginationState,
   DateFilter,
 } from "@/types/billing/billing";
-import { formatDate, formatCurrency } from "@/utils/formatting";
-import { getStatusBadge, getPlanBadge } from "@/utils/badges";
-import { getActiveSubscription } from "@/utils/billing";
+
 import { exportPaymentsAsCSV } from "@/utils/generate-csv";
 import {
   fetchCreditsInvoices,
@@ -282,7 +280,7 @@ export default function BillingPage() {
         />
 
         <div className="grid gap-6">
-          <CurrentPlanSection billingData={billingData} />
+          {/* <CurrentPlanSection billingData={billingData} /> */}
 
           <CreditsHistorySection
             billingData={billingData}

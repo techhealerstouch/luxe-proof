@@ -41,7 +41,6 @@ interface AuthenticatedProduct {
   estimated_production_year: string;
   final_summary: string;
   phone: string;
-  reference_number: string;
   status: string | null;
   updated_at: string;
   user_id: number;
@@ -211,10 +210,10 @@ export default function NfcPublicProfile() {
 
   const getAuthenticityColor = (verdict: string) => {
     switch (verdict?.toLowerCase()) {
-      case "genuine":
-      case "authentic":
+      case "Genuine":
+      case "Authentic":
         return "bg-green-100 text-green-800 border-green-300";
-      case "genuine_with_aftermarket_parts":
+      case "Genuine (Aftermarket)":
         return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "counterfeit":
       case "fake":

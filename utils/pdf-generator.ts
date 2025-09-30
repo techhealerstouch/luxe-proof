@@ -1,7 +1,11 @@
 // utils/pdf-generator.ts
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import { WatchAuthentication } from "@/types/watch-authentication";
-// Note: Logo component should be rendered at the React component level before calling this function
 
+/**
+ * Generate PDF and trigger print dialog
+ */
 export const generateAuthenticationPDF = (
   watchData: WatchAuthentication
 ): void => {
@@ -12,17 +16,98 @@ export const generateAuthenticationPDF = (
   }
 
   const htmlContent = createCertificateHTML(watchData);
-
   printWindow.document.write(htmlContent);
   printWindow.document.close();
 
-  // Wait for content to load then trigger print
   printWindow.onload = () => {
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
     }, 500);
   };
+};
+
+/**
+ * Generate PDF as Blob for email sending
+ */
+export const generateAuthenticationPDFBlob = async (
+  watchData: WatchAuthentication
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const htmlContent = createCertificateHTML(watchData);
+
+      // Create temporary container
+      const tempContainer = document.createElement("div");
+      tempContainer.innerHTML = htmlContent;
+      tempContainer.style.position = "absolute";
+      tempContainer.style.left = "-9999px";
+      tempContainer.style.top = "0";
+      tempContainer.style.width = "210mm";
+      document.body.appendChild(tempContainer);
+
+      // Get all certificate pages
+      const pages = tempContainer.querySelectorAll(".certificate");
+
+      if (pages.length === 0) {
+        document.body.removeChild(tempContainer);
+        reject(new Error("No certificate pages found"));
+        return;
+      }
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+
+      let currentPage = 0;
+
+      // Function to process each page
+      const processPage = () => {
+        if (currentPage >= pages.length) {
+          // All pages processed, get blob
+          const pdfBlob = pdf.output("blob");
+          document.body.removeChild(tempContainer);
+          resolve(pdfBlob);
+          return;
+        }
+
+        const page = pages[currentPage] as HTMLElement;
+
+        html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: "#ffffff",
+          width: 794,
+          height: 1123,
+        })
+          .then((canvas) => {
+            const imgData = canvas.toDataURL("image/jpeg", 0.95);
+
+            if (currentPage > 0) {
+              pdf.addPage();
+            }
+
+            pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+            currentPage++;
+            processPage();
+          })
+          .catch((error) => {
+            document.body.removeChild(tempContainer);
+            reject(error);
+          });
+      };
+
+      // Start processing pages after a small delay
+      setTimeout(() => processPage(), 500);
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
 const createCertificateHTML = (watchData: WatchAuthentication): string => {
@@ -81,9 +166,9 @@ const createCertificateHTML = (watchData: WatchAuthentication): string => {
   `;
 };
 
+// Keep all your existing helper functions exactly as they are
 const getCertificateStyles = (): string => `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-  
+  /* Use web-safe fonts instead of Google Fonts for PDF generation */
   * {
     margin: 0;
     padding: 0;
@@ -91,7 +176,7 @@ const getCertificateStyles = (): string => `
   }
   
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     background: white;
     padding: 0;
     color: #1f2937;
@@ -108,7 +193,7 @@ const getCertificateStyles = (): string => `
     flex-direction: column;
     position: relative;
     border: 2px solid #233252;
-    margin:5px;
+    margin: 5px;
     overflow: hidden;
     page-break-after: always;
   }
@@ -189,9 +274,9 @@ const getCertificateStyles = (): string => `
   .report-meta {
     display: flex;
     padding: 5px 2rem;
-      flex-shrink: 0;
-      justify-content: space-between;
-       margin: 0 30px;
+    flex-shrink: 0;
+    justify-content: space-between;
+    margin: 0 30px;
   }
   
   .meta-group {
@@ -217,8 +302,8 @@ const getCertificateStyles = (): string => `
     flex: 1;
     min-height: 0;
     margin: 0 30px;
-    position:relative;
-    overflow:hidden;
+    position: relative;
+    overflow: hidden;
   }
   
   .left-section {
@@ -259,7 +344,6 @@ const getCertificateStyles = (): string => `
     font-weight: bold;
     color: #1e2d4e;
     line-height: 1.4;
-  
   }
   
   .description-section {
@@ -273,17 +357,17 @@ const getCertificateStyles = (): string => `
     text-align: justify;
   }
   
-  .image-placeholder img{
+  .image-placeholder img {
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 5px;
   }
+  
   .image-placeholder p {
-    margin-bottom:10px;
+    margin-bottom: 10px;
   }
   
- 
   .signature-line {
     width: 180px;
     height: 1px;
@@ -306,7 +390,6 @@ const getCertificateStyles = (): string => `
     letter-spacing: 0.5px;
   }
   
- 
   .report-number {
     font-size: 12px;
     font-weight: 700;
@@ -326,28 +409,31 @@ const getCertificateStyles = (): string => `
     color: #1f2937;
     text-transform: uppercase;
   }
+  
   .footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin: 0 60px 20px 60px;
-    overflow:hidden;
+    overflow: hidden;
   }
+  
   .signature-section {
-    text-align: center;}
-
+    text-align: center;
+  }
+  
   .footer-info {
     text-align: right;
   }
-  .footer-icon{
+  
+  .footer-icon {
     position: absolute;
-    bottom:-150px;
-    right:-160px;
-     opacity:0.05;
-    overflow:hidden;
+    bottom: -150px;
+    right: -160px;
+    opacity: 0.05;
+    overflow: hidden;
   }
   
-  /* Page header styles for pages 2-8 */
   .page-header {
     display: flex;
     align-items: center;
@@ -384,12 +470,12 @@ const getCertificateStyles = (): string => `
     letter-spacing: 0.5px;
   }
   
-  /* Content area styles for pages 2-8 */
   .page-content {
     flex: 1;
     padding: 2rem;
     margin: 0 30px;
   }
+  
   .info-section {
     margin-bottom: 5px;
   }
@@ -403,7 +489,6 @@ const getCertificateStyles = (): string => `
     border-bottom: 1px solid #e5e7eb;
   }
   
-  /* Enhanced detail rows for individual pages */
   .page-detail-row {
     display: grid;
     grid-template-columns: 200px 1fr;
@@ -447,9 +532,8 @@ const getCertificateStyles = (): string => `
     color: #4b5563;
   }
   
-  /* Narrative styles for pages 2-8 */
   .professional-narrative {
-    font-family: 'Inter', sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
   }
   
   .narrative-paragraph {
@@ -531,13 +615,13 @@ const createMainContent = (watchData: WatchAuthentication): string => `
   <div class="meta-group" style="text-align: right;">
   <div class="meta-label">Status</div>
   <div class="meta-value" style="color: ${
-    watchData?.authenticity_verdict?.toLowerCase().includes("genuine")
+    watchData?.authenticity_verdict?.toLowerCase().includes("Genuine")
       ? "#16a34a"
-      : watchData?.authenticity_verdict?.toLowerCase().includes("counterfeit")
+      : watchData?.authenticity_verdict?.toLowerCase().includes("Counterfeit")
       ? "#dc2626"
       : watchData?.authenticity_verdict
           ?.toLowerCase()
-          .includes("genuine_with_aftermarket_parts")
+          .includes("Genuine (Aftermarket)")
       ? "#d97706"
       : "#6b7280"
   }; font-weight: 700;">${watchData?.authenticity_verdict}</div>
