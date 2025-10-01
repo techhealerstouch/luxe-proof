@@ -25,6 +25,7 @@ jobs:
             git fetch origin staging
             git checkout staging
             git pull origin staging
+            rm -rf /var/www/luxe-proof/.next/cache
             pm2 restart luxe-proof || pm2 start npm --name "luxe-proof" -- start -- -p 3002
 
   production:
