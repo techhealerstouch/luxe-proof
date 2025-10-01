@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   CreditCard,
@@ -39,6 +39,17 @@ interface Package {
   nfcCards?: number;
 }
 
+interface BackendCredit {
+  id: number;
+  name: string;
+  quantity: number;
+  price: string;
+  currency: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface TopUpProps {
   buttonText?: string;
   buttonVariant?: "default" | "outline" | "ghost" | "secondary";
@@ -48,32 +59,6 @@ interface TopUpProps {
 }
 
 const SHIPPING_COST = 150;
-const DEFAULT_PACKAGES: Package[] = [
-  {
-    id: "starter",
-    name: "Starter Package",
-    credits: 1000,
-    price: 1000,
-    nfcCards: 1,
-  },
-  {
-    id: "basic",
-    name: "Basic Package",
-    credits: 7000,
-    price: 6000, // Pay only for 6000 credits, get 1000 free!
-    popular: true,
-    freeAuthentications: 0, // Credits already include the bonus
-    nfcCards: 7,
-  },
-  {
-    id: "standard",
-    name: "Standard Package",
-    credits: 15000, // 12000 paid + 3000 free = 15000 total credits
-    price: 12000, // Pay only for 12000 credits, get 3000 free!
-    freeAuthentications: 0, // Credits already include the bonus
-    nfcCards: 15,
-  },
-];
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat("en-PH", {
@@ -92,6 +77,82 @@ const getAuthenticationCount = (
   return paidAuth + freeAuth;
 };
 
+// Map backend credit data to frontend package format
+const mapBackendToPackage = (credit: BackendCredit): Package => {
+  const price = parseFloat(credit.price);
+
+  // Calculate credits based on price (1000 PHP = 1000 credits base calculation)
+  // But we need to account for the bonus structure
+  let credits = 0;
+  let freeAuthentications = 0;
+  let nfcCards = 0;
+  let popular = false;
+
+  // Calculate based on the actual price from backend
+  if (credit.name === "Starter Package") {
+    // 1000 PHP = 1 auth = 1000 credits
+    const baseAuth = Math.floor(price / 1000);
+    credits = baseAuth * 1000;
+    nfcCards = baseAuth;
+  } else if (credit.name === "Basic Package") {
+    // 6000 PHP = 6 auth paid + 1 free = 7000 credits total
+    const baseAuth = Math.floor(price / 1000);
+    const bonusAuth = Math.floor(baseAuth / 6);
+    credits = (baseAuth + bonusAuth) * 1000;
+    nfcCards = baseAuth + bonusAuth;
+    popular = true;
+  } else if (credit.name === "Standard Package") {
+    // 12000 PHP = 12 auth paid + 3 free = 15000 credits total
+    const baseAuth = Math.floor(price / 1000);
+    const bonusAuth = Math.floor(baseAuth / 12) * 3;
+    credits = (baseAuth + bonusAuth) * 1000;
+    nfcCards = baseAuth + bonusAuth;
+  } else {
+    // Default calculation for any other packages
+    const baseAuth = Math.floor(price / 1000);
+    credits = baseAuth * 1000;
+    nfcCards = baseAuth;
+  }
+
+  return {
+    id: credit.id.toString(),
+    name: credit.name,
+    credits: credits,
+    price: price,
+    popular: popular,
+    freeAuthentications: freeAuthentications,
+    nfcCards: nfcCards,
+  };
+};
+
+const fetchPackages = async (): Promise<Package[]> => {
+  const token = localStorage.getItem("accessToken");
+
+  try {
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/credits`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.data.success && Array.isArray(response.data.data)) {
+      // Filter out Custom Package and map the rest
+      return response.data.data
+        .filter((credit: BackendCredit) => credit.name !== "Custom Package")
+        .map(mapBackendToPackage);
+    }
+    throw new Error("Invalid response format");
+  } catch (error) {
+    console.error("Failed to fetch packages:", error);
+    throw error;
+  }
+};
+
 const createInvoice = async (
   userId: string,
   packageData: Package | null,
@@ -104,9 +165,10 @@ const createInvoice = async (
     const response = await axios.post(
       `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/top-up`,
       {
+        credit_id: packageData?.id || null,
         user_id: userId,
         package: packageData?.name || "Custom Package",
-        credits: customAuth ? customAuth * 1000 : packageData?.credits,
+        credits: packageData?.credits,
         shipping_cost: shippingCost,
         custom_authentications: customAuth,
       },
@@ -150,7 +212,6 @@ const PackageCard: React.FC<{
 
   const nfcCards = pkg.nfcCards || totalAuth;
 
-  // Calculate savings for marketing display
   const savings = pkg.credits - pkg.price;
   const hasSavings = savings > 0;
 
@@ -174,16 +235,16 @@ const PackageCard: React.FC<{
         <div className="space-y-1">
           <p className="text-sm text-gray-600 flex items-center gap-1">
             <Coins className="h-3 w-3" />
-            {pkg.credits.toLocaleString()} credits
+            {(pkg.credits / 100).toLocaleString()} credits
           </p>
           <p className="text-xs font-medium">
             <span className="text-blue-600">
               {totalAuth} authentication{totalAuth !== 1 ? "s" : ""}
             </span>
-            {hasSavings && pkg.id === "basic" && (
+            {hasSavings && pkg.id === "2" && (
               <span className="ml-1 text-green-600">(6 + 1 free)</span>
             )}
-            {hasSavings && pkg.id === "standard" && (
+            {hasSavings && pkg.id === "3" && (
               <span className="ml-1 text-green-600">(12 + 3 free)</span>
             )}
           </p>
@@ -213,7 +274,6 @@ const TopUp: React.FC<TopUpProps> = ({
   buttonText = "Top Up",
   buttonVariant = "outline",
   buttonSize = "sm",
-  packages = DEFAULT_PACKAGES,
   className = "",
 }) => {
   const { user } = useAuth();
@@ -227,17 +287,39 @@ const TopUp: React.FC<TopUpProps> = ({
   const [customAuthNumber, setCustomAuthNumber] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("packages");
   const [showSummary, setShowSummary] = useState(false);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(false);
+  const [packageError, setPackageError] = useState<string | null>(null);
+
+  // Fetch packages when dialog opens
+  useEffect(() => {
+    if (isOpen && packages.length === 0) {
+      setIsLoadingPackages(true);
+      setPackageError(null);
+
+      fetchPackages()
+        .then((fetchedPackages) => {
+          setPackages(fetchedPackages);
+        })
+        .catch((err) => {
+          setPackageError("Failed to load packages. Please try again.");
+          console.error("Error fetching packages:", err);
+        })
+        .finally(() => {
+          setIsLoadingPackages(false);
+        });
+    }
+  }, [isOpen]);
 
   const selectedPackageData = packages.find(
     (pkg) => pkg.id === selectedPackage
   );
 
-  // Dynamic custom package calculations with bonus credits
   const calculateCustomPackage = (authCount: number) => {
     let bonusCredits = 0;
     let bonusAuth = 0;
 
-    // Bonus structure similar to packages
+    // Apply same bonus logic as the packages from backend
     if (authCount >= 6 && authCount < 12) {
       // Basic tier: 1 free per 6 authentications
       bonusAuth = Math.floor(authCount / 6);
@@ -254,7 +336,8 @@ const TopUp: React.FC<TopUpProps> = ({
 
     const baseCredits = authCount * 1000;
     const totalCredits = baseCredits + bonusCredits;
-    const price = baseCredits; // Pay only for base, bonus is free
+    // Price calculation: 1000 PHP per authentication (matching backend packages)
+    const price = authCount * 1000;
     const totalAuth = authCount + bonusAuth;
     const nfcCards = totalAuth; // NFC cards match total authentications
 
@@ -274,7 +357,6 @@ const TopUp: React.FC<TopUpProps> = ({
   const customPackageDetails =
     customAuthNum > 0 ? calculateCustomPackage(customAuthNum) : null;
 
-  // Create dynamic custom package with user input
   const dynamicCustomPackage: Package | null =
     activeTab === "custom" && customPackageDetails && customAuthNum > 0
       ? {
@@ -287,7 +369,6 @@ const TopUp: React.FC<TopUpProps> = ({
         }
       : null;
 
-  // Use dynamic custom package if in custom tab, otherwise use selected package
   const activePackageData =
     activeTab === "custom" ? dynamicCustomPackage : selectedPackageData;
 
@@ -420,10 +501,10 @@ const TopUp: React.FC<TopUpProps> = ({
             </Alert>
           )}
 
-          {error && (
+          {(error || packageError) && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{error || packageError}</AlertDescription>
             </Alert>
           )}
 
@@ -448,18 +529,50 @@ const TopUp: React.FC<TopUpProps> = ({
               </TabsList>
 
               <TabsContent value="packages" className="space-y-4">
-                <div className="grid gap-3 mt-4">
-                  {packages.map((pkg) => (
-                    <PackageCard
-                      key={pkg.id}
-                      package={pkg}
-                      isSelected={selectedPackage === pkg.id}
-                      onSelect={handlePackageSelect}
-                    />
-                  ))}
-                </div>
+                {isLoadingPackages ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                  </div>
+                ) : packageError ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                    <p>Failed to load packages</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => {
+                        setPackageError(null);
+                        setIsLoadingPackages(true);
+                        fetchPackages()
+                          .then(setPackages)
+                          .catch(() =>
+                            setPackageError("Failed to load packages")
+                          )
+                          .finally(() => setIsLoadingPackages(false));
+                      }}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : packages.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Package className="h-8 w-8 mx-auto mb-2" />
+                    <p>No packages available</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 mt-4">
+                    {packages.map((pkg) => (
+                      <PackageCard
+                        key={pkg.id}
+                        package={pkg}
+                        isSelected={selectedPackage === pkg.id}
+                        onSelect={handlePackageSelect}
+                      />
+                    ))}
+                  </div>
+                )}
 
-                {/* Order Summary for Packages */}
                 {selectedPackageData && (
                   <div className="border-t pt-4 space-y-2">
                     <h4 className="font-medium text-sm">Order Summary</h4>
@@ -574,14 +687,20 @@ const TopUp: React.FC<TopUpProps> = ({
                                   Total Credits:
                                 </span>
                                 <span className="font-semibold text-gray-900">
-                                  {customPackageDetails.totalCredits.toLocaleString()}{" "}
+                                  {(
+                                    customPackageDetails.totalCredits / 100
+                                  ).toLocaleString()}{" "}
                                   credits
                                   {customPackageDetails.bonusCredits > 0 && (
                                     <span className="text-xs text-green-600 ml-1">
                                       (
-                                      {customPackageDetails.baseCredits.toLocaleString()}{" "}
+                                      {(
+                                        customPackageDetails.baseCredits / 100
+                                      ).toLocaleString()}{" "}
                                       +{" "}
-                                      {customPackageDetails.bonusCredits.toLocaleString()}{" "}
+                                      {(
+                                        customPackageDetails.bonusCredits / 100
+                                      ).toLocaleString()}{" "}
                                       free)
                                     </span>
                                   )}
@@ -655,65 +774,11 @@ const TopUp: React.FC<TopUpProps> = ({
                                 </div>
                               </div>
                             </div>
-
-                            {customAuthNum === 6 && (
-                              <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
-                                <p className="text-xs text-yellow-800 text-center">
-                                  💡 Great choice! You're getting{" "}
-                                  <strong>1 FREE authentication</strong> with
-                                  this order!
-                                </p>
-                              </div>
-                            )}
-
-                            {customAuthNum === 7 && (
-                              <div className="bg-blue-50 border border-blue-200 rounded p-2 mt-2">
-                                <p className="text-xs text-blue-800 text-center">
-                                  💰 This matches our{" "}
-                                  <strong>Basic Package</strong> deal - smart
-                                  shopper!
-                                </p>
-                              </div>
-                            )}
-
-                            {customAuthNum === 12 && (
-                              <div className="bg-green-50 border border-green-200 rounded p-2 mt-2">
-                                <p className="text-xs text-green-800 text-center">
-                                  🎯 Perfect! You're getting{" "}
-                                  <strong>3 FREE authentications</strong> with
-                                  this order!
-                                </p>
-                              </div>
-                            )}
-
-                            {customAuthNum === 15 && (
-                              <div className="bg-green-50 border border-green-200 rounded p-2 mt-2">
-                                <p className="text-xs text-green-800 text-center">
-                                  🌟 This matches our{" "}
-                                  <strong>Standard Package</strong> - excellent
-                                  value!
-                                </p>
-                              </div>
-                            )}
-
-                            {customAuthNum >= 20 && customAuthNum <= 99 && (
-                              <div className="bg-purple-50 border border-purple-200 rounded p-2 mt-2">
-                                <p className="text-xs text-purple-800 text-center font-medium">
-                                  🌟 Premium Order! You're getting{" "}
-                                  <strong>
-                                    {customPackageDetails.bonusAuth} FREE
-                                    authentications
-                                  </strong>
-                                  !
-                                </p>
-                              </div>
-                            )}
                           </div>
                         </div>
                       )}
                   </div>
 
-                  {/* Order Summary for Custom */}
                   {dynamicCustomPackage && customPackageDetails && (
                     <div className="border-t pt-4 space-y-2">
                       <h4 className="font-medium text-sm">Order Summary</h4>
@@ -772,7 +837,6 @@ const TopUp: React.FC<TopUpProps> = ({
             </Tabs>
           )}
 
-          {/* Summary View After Buy Now */}
           {showSummary && !invoiceUrl && (
             <div className="border rounded-lg p-4 space-y-3 bg-blue-50">
               <h4 className="font-semibold text-sm flex items-center gap-2">

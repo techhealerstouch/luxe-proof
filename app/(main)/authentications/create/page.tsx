@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAuth } from "@/components/auth-provider";
+
 import DashboardLayout from "@/components/dashboard-layout";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -12,6 +14,8 @@ import { deductCredits, CreditService } from "@/lib/credit-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { fetchCredits } from "@/lib/credit-service"; // Adjust path as needed
+
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle,
@@ -132,10 +136,24 @@ export default function CreateAuthenticationPage() {
   const [activeTab, setActiveTab] = useState("user-info");
   const [completedTabs, setCompletedTabs] = useState<Set<string>>(new Set());
   const emptySchema = z.object({});
+  const [credits, setCredits] = useState<number | null>(null);
+  const { user } = useAuth();
+
   const creditValue = parseInt(
-    process.env.DEDUCT_CREDITS_WATCH_AUTHENTICATION || "1000",
+    process.env.DEDUCT_CREDITS_WATCH_AUTHENTICATION || "1",
     10
   );
+
+  useEffect(() => {
+    if (user) {
+      fetchCredits()
+        .then((balance) => setCredits(balance))
+        .catch((err) => {
+          console.error("Failed to fetch credits:", err);
+          setCredits(0); // fallback
+        });
+    }
+  }, [user]);
   // Check validation on component mount
   useEffect(() => {
     const checkValidation = () => {
@@ -384,10 +402,7 @@ export default function CreateAuthenticationPage() {
       <div className="space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Watch Authentication Process</h1>
-          <p className="text-muted-foreground mt-2">
-            Complete all sections to authenticate your watch (Cost: 1000
-            credits)
-          </p>
+
           {validatedSerial && (
             <div className="mt-2 space-y-2">
               <Badge variant="outline" className="text-green-600">
@@ -537,7 +552,11 @@ export default function CreateAuthenticationPage() {
                       <Button
                         type="button"
                         onClick={handleButtonSubmit}
-                        disabled={isSubmitting}
+                        disabled={
+                          isSubmitting ||
+                          credits === null ||
+                          credits < creditValue
+                        }
                         className="bg-green-600 hover:bg-green-700"
                       >
                         {isSubmitting ? (

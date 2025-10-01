@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import axios from "axios";
-
+import {
+  formatTimeAgo,
+  isEditAllowedFor3Days,
+  getRemainingEditDays,
+} from "@/utils/formatting";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { generateAuthenticationPDFBlob } from "@/utils/pdf-generator";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +32,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Eye,
@@ -52,78 +54,16 @@ import {
 import { WatchAuthentication } from "@/types/watch-authentication";
 import { toast } from "@/components/ui/use-toast";
 import { EditAuthenticationModal } from "@/components/authentications/edit-authentication-modal";
+import {
+  checkExistingNfc,
+  checkRefCode,
+  linkNfc,
+  type NfcLink,
+  type ExistingNfcCheck,
+  type ApiResponse,
+} from "@/lib/api-nfc-service";
 
-// NFC Interfaces
-interface NfcLink {
-  id: number;
-  ref_code: string;
-  account_id: number | null;
-  authenticated_products_id: number | null;
-  status: "unused" | "used";
-  created_at: string;
-  updated_at: string;
-}
-
-interface ApiResponse<T = any> {
-  success?: boolean;
-  valid?: boolean;
-  message: string;
-  data?: T;
-}
-
-// Helper function to check if edit is allowed (within 3 days of creation)
-const isEditAllowedFor3Days = (createdDate: string | null): boolean => {
-  if (!createdDate) return false;
-
-  const created = new Date(createdDate);
-  const now = new Date();
-  const threeDaysInMs = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
-
-  return now.getTime() - created.getTime() <= threeDaysInMs;
-};
-
-// Helper function to get remaining edit days
-const getRemainingEditDays = (createdDate: string | null): number => {
-  if (!createdDate) return 0;
-
-  const created = new Date(createdDate);
-  const now = new Date();
-
-  created.setHours(0, 0, 0, 0);
-  const currentDate = new Date(now);
-  currentDate.setHours(0, 0, 0, 0);
-
-  const diffInDays = Math.floor(
-    (currentDate.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  return Math.max(0, 3 - diffInDays);
-};
-
-// Helper function to format time ago
-const formatTimeAgo = (dateString: string | null): string => {
-  if (!dateString) return "N/A";
-
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-  if (diffDays > 0) {
-    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-  } else if (diffHours > 0) {
-    return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  } else if (diffMinutes > 0) {
-    return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
-  } else {
-    return "Just now";
-  }
-};
-
-// NFC Management Component
+// Update the NfcManagementModal component
 const NfcManagementModal: React.FC<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -138,19 +78,36 @@ const NfcManagementModal: React.FC<{
     text: string;
   } | null>(null);
   const [nfcData, setNfcData] = useState<NfcLink | null>(null);
+  const [existingNfc, setExistingNfc] = useState<ExistingNfcCheck | null>(null);
+  const [checkingExistingNfc, setCheckingExistingNfc] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const authToken = localStorage?.getItem("accessToken") || "";
-
   const clearMessage = () => {
     setTimeout(() => setMessage(null), 5000);
   };
 
-  // QR Code scanning functions
+  // Check if product already has NFC assigned
+  const handleCheckExistingNfc = async () => {
+    setCheckingExistingNfc(true);
+    try {
+      const result = await checkExistingNfc(productId);
+      setExistingNfc(result);
+    } catch (error) {
+      console.error("Failed to check existing NFC:", error);
+    } finally {
+      setCheckingExistingNfc(false);
+    }
+  };
+  useEffect(() => {
+    if (open) {
+      handleCheckExistingNfc();
+    }
+  }, [open, productId]);
+
   const startQrScanner = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -161,8 +118,6 @@ const NfcManagementModal: React.FC<{
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setQrScanning(true);
-
-        // Start scanning for QR codes
         scanIntervalRef.current = setInterval(scanQrCode, 500);
       }
     } catch (error) {
@@ -179,7 +134,6 @@ const NfcManagementModal: React.FC<{
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
@@ -215,39 +169,25 @@ const NfcManagementModal: React.FC<{
     }
   };
 
-  // Simple QR code detection (placeholder - in production use jsQR)
   const detectQrCode = (imageData: ImageData): string | null => {
-    // Placeholder for QR detection logic
     return null;
   };
-
   useEffect(() => {
     return () => {
       stopQrScanner();
     };
   }, []);
 
-  const checkRefCode = async () => {
+  // Replace checkRefCode function with:
+  const handleCheckRefCode = async () => {
     if (!refCode.trim()) {
       setMessage({ type: "error", text: "Please enter a reference code" });
       clearMessage();
       return;
     }
-
     setCheckLoading(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/nfc/check-ref-code/${refCode}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      const result: ApiResponse<NfcLink> = await response.json();
+      const result = await checkRefCode(refCode);
 
       if (result.valid && result.data) {
         setNfcData(result.data);
@@ -265,7 +205,8 @@ const NfcManagementModal: React.FC<{
     }
   };
 
-  const linkNfc = async () => {
+  // Replace linkNfc function with:
+  const handleLinkNfc = async () => {
     if (!refCode.trim() || !productId) {
       setMessage({
         type: "error",
@@ -277,23 +218,12 @@ const NfcManagementModal: React.FC<{
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/nfc/${refCode}/link/${productId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      const result: ApiResponse = await response.json();
+      const result = await linkNfc(refCode, productId);
 
       if (result.success) {
         setMessage({ type: "success", text: result.message });
-        // Refresh the NFC data after successful linking
-        await checkRefCode();
+        await handleCheckRefCode();
+        await handleCheckExistingNfc();
       } else {
         setMessage({ type: "error", text: result.message });
       }
@@ -303,25 +233,6 @@ const NfcManagementModal: React.FC<{
       setLoading(false);
       clearMessage();
     }
-  };
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "used":
-        return "default";
-      case "unused":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    return status === "used" ? (
-      <CheckCircle className="h-4 w-4 text-green-600" />
-    ) : (
-      <XCircle className="h-4 w-4 text-gray-400" />
-    );
   };
 
   return (
@@ -339,226 +250,320 @@ const NfcManagementModal: React.FC<{
         </DialogHeader>
 
         <div className="py-4">
-          {message && (
-            <Alert
-              className={`mb-4 ${
-                message.type === "error"
-                  ? "border-red-200 bg-red-50"
-                  : message.type === "success"
-                  ? "border-green-200 bg-green-50"
-                  : "border-blue-200 bg-blue-50"
-              }`}
-            >
-              <AlertDescription
-                className={`${
-                  message.type === "error"
-                    ? "text-red-800"
-                    : message.type === "success"
-                    ? "text-green-800"
-                    : "text-blue-800"
-                }`}
-              >
-                {message.text}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* QR Scanner Modal */}
-          {qrScanning && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <QrCode className="h-5 w-5" />
-                    Scan QR Code
-                  </h3>
-                  <Button variant="ghost" size="sm" onClick={stopQrScanner}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="relative">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full rounded-lg"
-                  />
-                  <canvas ref={canvasRef} className="hidden" />
-                  <div className="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none">
-                    <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-blue-500"></div>
-                    <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-blue-500"></div>
-                    <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-blue-500"></div>
-                    <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-blue-500"></div>
-                  </div>
-                </div>
-                <p className="text-center text-sm text-gray-600 mt-4">
-                  Position the QR code within the frame to scan
-                </p>
-              </div>
+          {checkingExistingNfc ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Loading NFC information...
+              </p>
             </div>
-          )}
+          ) : (
+            <>
+              {message && (
+                <Alert
+                  className={`mb-4 ${
+                    message.type === "error"
+                      ? "border-red-200 bg-red-50"
+                      : message.type === "success"
+                      ? "border-green-200 bg-green-50"
+                      : "border-blue-200 bg-blue-50"
+                  }`}
+                >
+                  <AlertDescription
+                    className={`${
+                      message.type === "error"
+                        ? "text-red-800"
+                        : message.type === "success"
+                        ? "text-green-800"
+                        : "text-blue-800"
+                    }`}
+                  >
+                    {message.text}
+                  </AlertDescription>
+                </Alert>
+              )}
 
-          <Tabs defaultValue="check" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="check">Check Reference</TabsTrigger>
-              <TabsTrigger value="link">Link NFC</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="check" className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-3 flex items-center gap-2">
-                  <Search className="h-5 w-5" />
-                  Check Reference Code
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Verify if a reference code is valid and view its current
-                  status
-                </p>
-
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Label htmlFor="check-ref-code">Reference Code</Label>
-                    <Input
-                      id="check-ref-code"
-                      placeholder="Enter reference code (e.g., ABC123XYZ)"
-                      value={refCode}
-                      onChange={(e) => setRefCode(e.target.value.toUpperCase())}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={startQrScanner}
-                      disabled={qrScanning}
-                      title="Scan QR Code"
-                    >
-                      <QrCode className="h-4 w-4" />
-                    </Button>
-                    <Button onClick={checkRefCode} disabled={checkLoading}>
-                      {checkLoading && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Check Code
-                    </Button>
-                  </div>
-                </div>
-
-                {nfcData && (
-                  <div className="mt-6 p-4 border rounded-lg bg-gray-50">
-                    <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      NFC Link Details
-                      {getStatusIcon(nfcData.status)}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <Label className="text-muted-foreground">
-                          Reference Code
-                        </Label>
-                        <p className="font-mono font-medium">
-                          {nfcData.ref_code}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Status</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge
-                            variant={getStatusBadgeVariant(nfcData.status)}
-                          >
-                            {nfcData.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">
-                          Account ID
-                        </Label>
-                        <p>{nfcData.account_id || "Not assigned"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">
-                          Product ID
-                        </Label>
-                        <p>
-                          {nfcData.authenticated_products_id || "Not linked"}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Created</Label>
-                        <p>
-                          {new Date(nfcData.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Updated</Label>
-                        <p>
-                          {new Date(nfcData.updated_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="link" className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-3 flex items-center gap-2">
-                  <Link className="h-5 w-5" />
-                  Link NFC to Product
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Associate an NFC card with this authenticated product
-                </p>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="link-ref-code">Reference Code</Label>
-                    <div className="flex gap-2 mt-1">
-                      <Input
-                        id="link-ref-code"
-                        placeholder="Enter reference code"
-                        value={refCode}
-                        onChange={(e) =>
-                          setRefCode(e.target.value.toUpperCase())
-                        }
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={startQrScanner}
-                        disabled={qrScanning}
-                        title="Scan QR Code"
-                      >
-                        <QrCode className="h-4 w-4" />
+              {qrScanning && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <QrCode className="h-5 w-5" />
+                        Scan QR Code
+                      </h3>
+                      <Button variant="ghost" size="sm" onClick={stopQrScanner}>
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="product-id">Authenticated Product ID</Label>
-                    <Input
-                      id="product-id"
-                      value={productId}
-                      disabled
-                      className="mt-1 bg-gray-50"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      This is automatically set to the current product
+                    <div className="relative">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full rounded-lg"
+                      />
+                      <canvas ref={canvasRef} className="hidden" />
+                      <div className="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none">
+                        <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-blue-500"></div>
+                        <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-blue-500"></div>
+                        <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-blue-500"></div>
+                        <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-blue-500"></div>
+                      </div>
+                    </div>
+                    <p className="text-center text-sm text-gray-600 mt-4">
+                      Position the QR code within the frame to scan
                     </p>
                   </div>
                 </div>
+              )}
 
-                <Separator className="my-4" />
+              {existingNfc?.has_nfc ? (
+                <div className="space-y-4">
+                  <Alert className="border-green-200 bg-green-50">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 font-medium">
+                      This product is successfully linked to an NFC card and
+                      ready for scanning.
+                    </AlertDescription>
+                  </Alert>
 
-                <Button onClick={linkNfc} disabled={loading} className="w-full">
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Link NFC to Product
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="border rounded-lg p-4">
+                      <Label className="text-xs text-muted-foreground">
+                        Reference Code
+                      </Label>
+                      <p className="font-mono font-bold text-lg mt-1">
+                        {existingNfc.nfc_data?.ref_code}
+                      </p>
+                    </div>
+                    <div className="border rounded-lg p-4">
+                      <Label className="text-xs text-muted-foreground">
+                        Status
+                      </Label>
+                      <div>
+                        <Badge className="mt-2 bg-green-600">
+                          {existingNfc.nfc_data?.status?.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="border rounded-lg p-4">
+                      <Label className="text-xs text-muted-foreground">
+                        Linked On
+                      </Label>
+                      <p className="text-sm font-medium mt-1">
+                        {existingNfc.nfc_data?.created_at
+                          ? new Date(
+                              existingNfc.nfc_data.created_at
+                            ).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })
+                          : "N/A"}
+                      </p>
+                    </div>
+                    <div className="border rounded-lg p-4">
+                      <Label className="text-xs text-muted-foreground">
+                        Last Updated
+                      </Label>
+                      <p className="text-sm font-medium mt-1">
+                        {existingNfc.nfc_data?.updated_at
+                          ? new Date(
+                              existingNfc.nfc_data.updated_at
+                            ).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })
+                          : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Tabs defaultValue="check" className="space-y-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="check">Check Reference</TabsTrigger>
+                    <TabsTrigger value="link">Link NFC</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="check" className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2 flex items-center gap-2">
+                        <Search className="h-4 w-4" />
+                        Check Reference Code
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Verify if a reference code is valid and view its current
+                        status
+                      </p>
+
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label htmlFor="check-ref-code">Reference Code</Label>
+                          <Input
+                            id="check-ref-code"
+                            placeholder="Enter reference code (e.g., ABC123XYZ)"
+                            value={refCode}
+                            onChange={(e) =>
+                              setRefCode(e.target.value.toUpperCase())
+                            }
+                            className="mt-1"
+                          />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={startQrScanner}
+                            disabled={qrScanning}
+                            title="Scan QR Code"
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={handleCheckRefCode}
+                            disabled={checkLoading}
+                          >
+                            {checkLoading && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            Check
+                          </Button>
+                        </div>
+                      </div>
+
+                      {nfcData && (
+                        <div className="mt-4 border rounded-lg p-4 bg-muted/50">
+                          <h4 className="font-semibold mb-3 flex items-center gap-2">
+                            NFC Link Details
+                          </h4>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Reference Code
+                              </Label>
+                              <p className="font-mono font-medium">
+                                {nfcData.ref_code}
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Status
+                              </Label>
+                              <Badge className="mt-1">
+                                {nfcData.status.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Account ID
+                              </Label>
+                              <p>{nfcData.account_id || "Not assigned"}</p>
+                            </div>
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Product ID
+                              </Label>
+                              <p>
+                                {nfcData.authenticated_products_id ||
+                                  "Not linked"}
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Created
+                              </Label>
+                              <p>
+                                {new Date(
+                                  nfcData.created_at
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-muted-foreground">
+                                Updated
+                              </Label>
+                              <p>
+                                {new Date(
+                                  nfcData.updated_at
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="link" className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2 flex items-center gap-2">
+                        <Link className="h-4 w-4" />
+                        Link NFC to Product
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Associate an NFC card with this authenticated product
+                      </p>
+
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="link-ref-code">Reference Code</Label>
+                          <div className="flex gap-2 mt-1">
+                            <Input
+                              id="link-ref-code"
+                              placeholder="Enter reference code"
+                              value={refCode}
+                              onChange={(e) =>
+                                setRefCode(e.target.value.toUpperCase())
+                              }
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={startQrScanner}
+                              disabled={qrScanning}
+                              title="Scan QR Code"
+                            >
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="product-id">
+                            Authenticated Product ID
+                          </Label>
+                          <Input
+                            id="product-id"
+                            value={productId}
+                            disabled
+                            className="mt-1 bg-muted"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            This is automatically set to the current product
+                          </p>
+                        </div>
+                      </div>
+
+                      <Separator className="my-4" />
+
+                      <Button
+                        onClick={handleLinkNfc}
+                        disabled={loading}
+                        className="w-full"
+                      >
+                        {loading && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        Link NFC to Product
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              )}
+            </>
+          )}
         </div>
 
         <DialogFooter>
@@ -1144,7 +1149,7 @@ const TableActions: React.FC<TableActionsProps> = ({
                         variant={
                           nfcData.status === "used" ? "default" : "secondary"
                         }
-                        className="mt-1"
+                        className="mt-1 w-full block"
                       >
                         {nfcData.status?.toUpperCase() || "N/A"}
                       </Badge>
