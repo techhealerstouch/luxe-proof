@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/components/ui/use-toast";
-
+import { fetchCredits } from "@/lib/credit-service"; // Adjust path as needed
 import type {
   ColumnFiltersState,
   SortingState,
@@ -180,20 +180,30 @@ export default function AuthenticationsPage() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [credits, setCredits] = useState<number | null>(null);
 
   // Custom hooks
   const debouncedSearch = useDebounce(search, 250);
   const { authentications, isLoading, error, fetchData } =
     useAuthenticationData();
-  // const {} = useProvenanceAudit();
 
-  // Effects
   useEffect(() => {
     if (user) {
       fetchData();
     }
   }, [user, router]);
+  useEffect(() => {
+    if (user) {
+      fetchCredits()
+        .then((balance) => setCredits(balance))
+        .catch((err) => {
+          console.error("Failed to fetch credits:", err);
+          setCredits(0); // fallback
+        });
+    }
+  }, [user]);
 
+  if (!user) return null;
   useEffect(() => {
     setGlobalFilter(debouncedSearch);
   }, [debouncedSearch]);
@@ -420,14 +430,14 @@ export default function AuthenticationsPage() {
             Manage and track your watch authentication records
           </p>
         </div>
-        <Button asChild size="default" className="shrink-0">
-          <Link
-            href="/authentications/intro"
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New Authentication
-          </Link>
+        <Button
+          size="default"
+          className="shrink-0"
+          onClick={() => router.push("/authentications/intro")}
+          disabled={credits === null || credits <= 0}
+        >
+          <Plus className="h-4 w-4" />
+          New Authentications
         </Button>
       </div>
 

@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -20,14 +21,17 @@ import {
   X,
   UserRound,
   CircleDollarSign,
+  HelpCircle,
+  BookOpen,
+  MessageCircle,
+  Mail,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import Credits from "@/components/credits"; // Adjust path as needed
-import IconCompany from "./icon";
 import CreditsWithTopUp from "./CreditsWithTopUp";
-// import Logo from "@/components/logo";
 
 interface TopNavigationProps {
   sidebarOpen: boolean;
@@ -43,30 +47,9 @@ export default function TopNavigation({
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  // State to manage user credits - starts at 0
-  const [userCredits, setUserCredits] = useState(user?.credits || 0);
-
   const handleLogout = () => {
     logout();
     router.push("/login");
-  };
-
-  const handleCreditPurchase = (packageId: string, packageData: any) => {
-    console.log(
-      `Purchased ${packageData.name}: ${packageData.credits} credits`
-    );
-    // Update the credits in the TopNavigation state
-    setUserCredits((prev) => prev + packageData.credits);
-  };
-
-  const handlePaymentSuccess = (packageData: any) => {
-    console.log("Payment successful in TopNavigation:", packageData);
-    // This is an additional callback if you need to do other things on success
-  };
-
-  const handlePaymentError = (error: string) => {
-    console.error("Payment error in TopNavigation:", error);
-    // Handle payment errors (show toast, etc.)
   };
 
   return (
@@ -96,6 +79,30 @@ export default function TopNavigation({
       <div className="flex items-center gap-3">
         {/* Credits Component with dynamic state */}
         <CreditsWithTopUp size="sm" showRefresh topUpButtonText="Add Credits" />
+
+        {/* Help Center */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 px-3 py-2 h-auto"
+              aria-label="Help Center"
+            >
+              <HelpCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">Help</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Help & Support</DropdownMenuLabel>
+
+            <DropdownMenuItem asChild>
+              <Link href="/contact">
+                <Mail className="mr-2 h-4 w-4" />
+                Contact Support
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* User Menu */}
         <DropdownMenu>

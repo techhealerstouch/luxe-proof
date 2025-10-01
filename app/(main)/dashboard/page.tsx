@@ -5,6 +5,8 @@ import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard-layout";
 import { AuthLoading } from "@/components/auth-loading";
+import { formatTimeAgo } from "@/utils/formatting";
+
 import {
   Card,
   CardContent,
@@ -22,33 +24,18 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import {
   Shield,
   AlertTriangle,
   Eye,
   Plus,
-  DollarSign,
   Award,
   Users,
   Loader2,
   RefreshCw,
   Clock,
   Coins,
-  CreditCard,
-  Smartphone,
-  Building2,
-  Wallet,
-  AlertCircle,
   CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -56,13 +43,19 @@ import Link from "next/link";
 // Import credits service functions
 import {
   fetchCredits,
-  createInvoice,
   getAuthenticationCount,
-  formatCurrency,
-  DEFAULT_PACKAGES,
   CreditService,
   type Package,
 } from "@/lib/credit-service"; // Adjust path as needed
+import {
+  fetchDashboardStats,
+  fetchRecentAuthentications,
+  fetchTopBrands,
+  fetchNfcTotal,
+  type DashboardStatsResponse,
+  type AuthenticationItem,
+  type TopBrand,
+} from "@/lib/api-dashboard";
 
 interface DashboardStats {
   totalAuthentications: number;
@@ -76,70 +69,6 @@ interface DashboardStats {
   creditsUsed: number;
   creditsRemaining: number;
 }
-
-interface AuthenticationItem {
-  id: string;
-  name?: string;
-  client_name?: string;
-  brand: string;
-  model?: string;
-  serial_number?: string;
-  estimated_production_year?: string | number;
-  authenticity_verdict?: string;
-  status?: string;
-  document_sent_at?: string;
-  created_at?: string;
-}
-
-interface TopBrand {
-  brand: string;
-  count: number;
-  revenue: number;
-}
-
-interface PaymentMethod {
-  id: string;
-  name: string;
-  type: string;
-  icon: any;
-  description: string;
-  enabled: boolean;
-}
-
-const PAYMENT_METHODS: PaymentMethod[] = [
-  {
-    id: "cards",
-    name: "Credit/Debit Card",
-    type: "CREDIT_CARD",
-    icon: CreditCard,
-    description: "Visa, Mastercard, JCB, AMEX",
-    enabled: true,
-  },
-  {
-    id: "ewallet",
-    name: "E-Wallet",
-    type: "EWALLET",
-    icon: Smartphone,
-    description: "GCash, PayMaya, GrabPay",
-    enabled: true,
-  },
-  {
-    id: "bank_transfer",
-    name: "Bank Transfer",
-    type: "BANK_TRANSFER",
-    icon: Building2,
-    description: "Online Banking, ATM",
-    enabled: true,
-  },
-  {
-    id: "qr_code",
-    name: "QR Code",
-    type: "QR_CODE",
-    icon: Wallet,
-    description: "Scan to pay",
-    enabled: true,
-  },
-];
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
@@ -157,17 +86,14 @@ export default function DashboardPage() {
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [creditsError, setCreditsError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const [topUpDialogOpen, setTopUpDialogOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
-    string | null
-  >(null);
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [totalNfc, setTotalNfc] = useState<number>(0);
 
   // Initialize credits service
   const creditService = CreditService.getInstance();
+  const deductCredits = parseInt(
+    process.env.NEXT_PUBLIC_DEDUCT_CREDITS_WATCH_AUTHENTICATION || "0",
+    10
+  );
 
   // Credits utility functions using the service
   const getCreditStatus = (credits: number) => {
@@ -178,7 +104,7 @@ export default function DashboardPage() {
         color: "text-red-600",
         bgColor: "bg-red-50 border-red-200",
       };
-    } else if (credits < 1000) {
+    } else if (credits < deductCredits) {
       return {
         status: "low",
         message: "Low credits - insufficient for authentication",
@@ -202,18 +128,6 @@ export default function DashboardPage() {
     }
   };
 
-  const formatPrice = (price: number, discount?: number) => {
-    if (discount) {
-      const discountedPrice = price * (1 - discount / 100);
-      return {
-        original: price,
-        discounted: discountedPrice,
-        savings: price - discountedPrice,
-      };
-    }
-    return { original: price };
-  };
-
   // Load credits from API
   const loadUserCredits = async () => {
     try {
@@ -231,103 +145,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Credits handlers
-  const handlePackageSelect = (packageId: string): void => {
-    setSelectedPackage(packageId);
-    setPaymentError(null);
-  };
-
-  const handlePaymentMethodSelect = (methodId: string): void => {
-    setSelectedPaymentMethod(methodId);
-    setPaymentError(null);
-  };
-
-  const handleProceedToPayment = async (): Promise<void> => {
-    if (!selectedPackage || !selectedPaymentMethod || !user?.id) {
-      setPaymentError("Please select a package and payment method");
-      return;
-    }
-
-    const packageData = DEFAULT_PACKAGES.find(
-      (pkg) => pkg.id === selectedPackage
-    );
-    if (!packageData) {
-      setPaymentError("Invalid package selected");
-      return;
-    }
-
-    setProcessingPayment(true);
-    setPaymentError(null);
-
-    try {
-      // Use the credits service to create invoice
-      const invoiceUrl = await creditService.topUp(user.id, packageData);
-
-      // For now, simulate payment success after creating invoice
-      // In a real implementation, you'd redirect to the payment gateway
-      // and handle the callback
-      setTimeout(async () => {
-        try {
-          // Refresh credits after payment
-          const newCredits = await creditService.refreshCredits();
-          setUserCredits(newCredits);
-          setPaymentSuccess(true);
-
-          setTimeout(() => {
-            handleDialogClose();
-          }, 2000);
-        } catch (error) {
-          setPaymentError(
-            "Payment completed but failed to refresh credits. Please refresh the page."
-          );
-        } finally {
-          setProcessingPayment(false);
-        }
-      }, 2000);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Payment processing failed";
-      setPaymentError(errorMessage);
-      setProcessingPayment(false);
-    }
-  };
-
-  const handleDialogClose = (): void => {
-    if (!processingPayment) {
-      setTopUpDialogOpen(false);
-      resetDialog();
-    }
-  };
-
-  const resetDialog = (): void => {
-    setSelectedPackage(null);
-    setSelectedPaymentMethod(null);
-    setPaymentError(null);
-    setPaymentSuccess(false);
-    setProcessingPayment(false);
-  };
-
-  // Format time ago helper
-  const formatTimeAgo = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffDays > 0) {
-      return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-    } else if (diffHours > 0) {
-      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
-    } else {
-      return "Just now";
-    }
-  };
-
-  // Get status badge
   const getStatusBadge = (auth: AuthenticationItem) => {
     const status = auth.status;
     const documentSent = auth.document_sent_at;
@@ -389,94 +206,6 @@ export default function DashboardPage() {
   };
 
   // Credits render functions
-  const renderPackageCard = (pkg: Package): React.ReactElement => {
-    const pricing = formatPrice(pkg.price, pkg.discount);
-    const isSelected = selectedPackage === pkg.id;
-
-    return (
-      <div
-        key={pkg.id}
-        className={`relative flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
-          isSelected
-            ? "border-blue-500 bg-blue-50 shadow-md"
-            : "border-gray-200 hover:border-blue-300 hover:shadow-sm"
-        } ${pkg.popular && !isSelected ? "border-blue-200 bg-blue-25" : ""}`}
-        onClick={() => handlePackageSelect(pkg.id)}
-      >
-        {pkg.popular && (
-          <Badge className="absolute -top-2 right-2 text-xs bg-blue-500">
-            Popular
-          </Badge>
-        )}
-        {pkg.discount && (
-          <Badge variant="secondary" className="absolute -top-2 left-2 text-xs">
-            {pkg.discount}% OFF
-          </Badge>
-        )}
-
-        <div>
-          <h4 className="font-semibold text-gray-900">{pkg.name}</h4>
-          <div className="space-y-1">
-            <p className="text-sm text-gray-600 flex items-center gap-1">
-              <Coins className="h-3 w-3" />
-              {pkg.credits.toLocaleString()} credits
-            </p>
-            <p className="text-xs text-blue-600 font-medium">
-              {getAuthenticationCount(pkg.credits)} authentication
-              {getAuthenticationCount(pkg.credits) !== 1 ? "s" : ""}
-            </p>
-          </div>
-          {pkg.discount && pricing.savings && (
-            <p className="text-xs text-green-600 font-medium">
-              Save {formatCurrency(pricing.savings)}
-            </p>
-          )}
-        </div>
-
-        <div className="text-right">
-          <div className="flex items-center gap-2">
-            {pricing.discounted && (
-              <span className="text-sm text-gray-500 line-through">
-                {formatCurrency(pricing.original)}
-              </span>
-            )}
-            <div className="font-semibold text-lg">
-              {formatCurrency(pricing.discounted || pricing.original)}
-            </div>
-          </div>
-          <div className="text-xs text-gray-500">
-            {formatCurrency(
-              (pricing.discounted || pricing.original) / pkg.credits
-            )}
-            /credit
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderPaymentMethod = (method: PaymentMethod): React.ReactElement => {
-    const IconComponent = method.icon;
-    const isSelected = selectedPaymentMethod === method.id;
-
-    return (
-      <div
-        key={method.id}
-        className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
-          isSelected
-            ? "border-blue-500 bg-blue-50 shadow-sm"
-            : "border-gray-200 hover:border-blue-300"
-        }`}
-        onClick={() => handlePaymentMethodSelect(method.id)}
-      >
-        <IconComponent className="h-5 w-5 text-gray-600" />
-        <div className="flex-1">
-          <div className="font-medium text-gray-900">{method.name}</div>
-          <div className="text-sm text-gray-600">{method.description}</div>
-        </div>
-      </div>
-    );
-  };
 
   // Fetch dashboard data
   const fetchDashboardData = async (showLoader = true) => {
@@ -484,105 +213,50 @@ export default function DashboardPage() {
       setError(null);
       if (showLoader) setLoading(true);
 
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        setError("No authentication token available");
-        return;
-      }
-
-      const baseURL = process.env.NEXT_PUBLIC_API_URL;
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      };
-
-      // Load credits from API instead of localStorage
+      // Load credits
       await loadUserCredits();
 
       // Fetch stats
       try {
-        const statsResponse = await fetch(`${baseURL}/api/dashboard/stats`, {
-          headers,
+        const statsData = await fetchDashboardStats();
+        setStats({
+          totalAuthentications: Number(statsData.totalAuthentications) || 0,
+          pendingAuthentications: Number(statsData.pendingAuthentications) || 0,
+          completedAuthentications:
+            Number(statsData.completedAuthentications) || 0,
+          rejectedAuthentications:
+            Number(statsData.rejectedAuthentications) || 0,
+          totalRevenue: Number(statsData.totalRevenue) || 0,
+          thisMonthRevenue: Number(statsData.thisMonthRevenue) || 0,
+          lastMonthRevenue: Number(statsData.lastMonthRevenue) || 0,
+          totalClients: Number(statsData.totalClients) || 0,
+          creditsUsed: Number(statsData.creditsUsed) || 0,
+          creditsRemaining: userCredits,
         });
-
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json();
-          setStats({
-            totalAuthentications: Number(statsData.totalAuthentications) || 0,
-            pendingAuthentications:
-              Number(statsData.pendingAuthentications) || 0,
-            completedAuthentications:
-              Number(statsData.completedAuthentications) || 0,
-            rejectedAuthentications:
-              Number(statsData.rejectedAuthentications) || 0,
-            totalRevenue: Number(statsData.totalRevenue) || 0,
-            thisMonthRevenue: Number(statsData.thisMonthRevenue) || 0,
-            lastMonthRevenue: Number(statsData.lastMonthRevenue) || 0,
-            totalClients: Number(statsData.totalClients) || 0,
-            creditsUsed: Number(statsData.creditsUsed) || 0,
-            creditsRemaining: userCredits, // Use API credits
-          });
-        }
       } catch (error) {
         console.error("Error fetching stats:", error);
       }
 
-      // Fetch recent authentications
+      // Fetch NFC total
       try {
-        const recentResponse = await fetch(`${baseURL}/api/auth-products`, {
-          headers,
-        });
+        const nfcData = await fetchNfcTotal();
+        setTotalNfc(nfcData.totalNfc || 0);
+      } catch (error) {
+        console.error("Error fetching NFC total:", error);
+      }
 
-        if (recentResponse.ok) {
-          const recentData = await recentResponse.json();
-
-          const mappedData = Array.isArray(recentData.data)
-            ? recentData.data
-                .sort((a: any, b: any) => {
-                  const dateA = new Date(a.created_at || 0).getTime();
-                  const dateB = new Date(b.created_at || 0).getTime();
-                  return dateB - dateA;
-                })
-                .slice(0, 5)
-                .map((item: any) => ({
-                  id: item.id,
-                  name: item.client_name || item.name || "Unknown Client",
-                  client_name: item.client_name,
-                  brand: item.brand,
-                  model: item.model,
-                  serial_number: item.serial_info.serial_number,
-                  estimated_production_year: item.estimated_production_year,
-                  authenticity_verdict: item.authenticity_verdict,
-                  status: item.status || "completed",
-                  document_sent_at: item.document_sent_at,
-                  created_at: item.created_at,
-                }))
-            : [];
-
-          setRecentAuthentications(mappedData);
-        }
+      // Recent authentications
+      try {
+        const recentData = await fetchRecentAuthentications();
+        setRecentAuthentications(recentData);
       } catch (error) {
         console.error("Error fetching recent authentications:", error);
       }
 
-      // Fetch top brands
+      // Top brands
       try {
-        const brandsResponse = await fetch(
-          `${baseURL}/api/dashboard/top-brands`,
-          {
-            headers,
-          }
-        );
-
-        if (brandsResponse.ok) {
-          const brandsData = await brandsResponse.json();
-          setTopBrands(
-            Array.isArray(brandsData.data || brandsData)
-              ? (brandsData.data || brandsData).slice(0, 5)
-              : []
-          );
-        }
+        const brandsData = await fetchTopBrands();
+        setTopBrands(brandsData);
       } catch (error) {
         console.error("Error fetching top brands:", error);
       }
@@ -659,18 +333,16 @@ export default function DashboardPage() {
               Refresh
             </Button>
             <Button
-              asChild
-              disabled={userCredits < 1000 || creditsLoading}
+              onClick={() => router.push("/authentications/intro")}
+              disabled={userCredits <= 0 || creditsLoading}
               className={
-                userCredits < 1000 || creditsLoading
+                userCredits <= 0 || creditsLoading
                   ? "opacity-50 cursor-not-allowed"
                   : ""
               }
             >
-              <Link href="/authentications/intro">
-                <Plus className="w-4 h-4 mr-2" />
-                New Authentication
-              </Link>
+              <Plus className="w-4 h-4 mr-2" />
+              New Authentication
             </Button>
           </div>
         </div>
@@ -753,7 +425,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.totalAuthentications?.toLocaleString() || 0}
+                {totalNfc.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">NFC Total Client</p>
             </CardContent>
@@ -865,21 +537,21 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
-                asChild
+                onClick={() => router.push("/authentications/intro")}
                 className={`w-full justify-start ${
-                  userCredits < 1000 || creditsLoading ? "opacity-50" : ""
+                  userCredits < deductCredits || creditsLoading
+                    ? "opacity-50"
+                    : ""
                 }`}
-                disabled={userCredits < 1000 || creditsLoading}
+                disabled={userCredits <= 0 || creditsLoading}
               >
-                <Link href="/authentications/intro">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Start Authentication{" "}
-                  {userCredits < 1000
-                    ? "(Insufficient Credits)"
-                    : creditsLoading
-                    ? "(Loading...)"
-                    : ""}
-                </Link>
+                <Plus className="w-4 h-4 mr-2" />
+                Start Authentication{" "}
+                {userCredits < deductCredits
+                  ? "(Insufficient Credits)"
+                  : creditsLoading
+                  ? "(Loading...)"
+                  : ""}
               </Button>
               <Button
                 variant="outline"
@@ -922,9 +594,6 @@ export default function DashboardPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[120px]">
-                          Serial Number
-                        </TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Brand</TableHead>
                         <TableHead>Model</TableHead>
@@ -946,15 +615,6 @@ export default function DashboardPage() {
                               router.push(`/authentications/${auth.id}`)
                             }
                           >
-                            <TableCell>
-                              <div
-                                className={`font-mono text-sm ${
-                                  isVoided ? "text-gray-400 line-through" : ""
-                                }`}
-                              >
-                                {auth.serial_number || "N/A"}
-                              </div>
-                            </TableCell>
                             <TableCell>
                               <div
                                 className={`font-medium ${
@@ -1041,14 +701,16 @@ export default function DashboardPage() {
                   <Button
                     asChild
                     size="sm"
-                    disabled={userCredits < 1000 || creditsLoading}
+                    disabled={userCredits < deductCredits || creditsLoading}
                     className={
-                      userCredits < 1000 || creditsLoading ? "opacity-50" : ""
+                      userCredits < deductCredits || creditsLoading
+                        ? "opacity-50"
+                        : ""
                     }
                   >
                     <Link href="/authentications/intro">
                       <Plus className="h-4 w-4 mr-2" />
-                      {userCredits < 1000
+                      {userCredits < deductCredits
                         ? "Need Credits"
                         : creditsLoading
                         ? "Loading..."
@@ -1109,112 +771,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Credits Top Up Dialog */}
-        <Dialog open={topUpDialogOpen} onOpenChange={setTopUpDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {paymentSuccess ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <CreditCard className="h-5 w-5" />
-                )}
-                {paymentSuccess ? "Payment Successful!" : "Top Up Credits"}
-              </DialogTitle>
-              <DialogDescription>
-                {paymentSuccess ? (
-                  `Your new credit balance is ${userCredits.toLocaleString()} credits.`
-                ) : (
-                  <>
-                    Choose a credit package and payment method. Current balance:{" "}
-                    <strong>{userCredits.toLocaleString()} credits</strong> (
-                    {getAuthenticationCount(userCredits)} authentication
-                    {getAuthenticationCount(userCredits) !== 1 ? "s" : ""})
-                  </>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            {paymentSuccess && (
-              <Alert className="border-green-200 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
-                  Payment completed successfully! Your credits have been added.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {paymentError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{paymentError}</AlertDescription>
-              </Alert>
-            )}
-
-            {!paymentSuccess && (
-              <div className="space-y-6 py-4 max-h-96 overflow-y-auto">
-                {/* Package Selection */}
-                <div>
-                  <h4 className="font-medium mb-3">Select Package</h4>
-                  <div className="grid gap-3">
-                    {DEFAULT_PACKAGES.map(renderPackageCard)}
-                  </div>
-                </div>
-
-                {/* Payment Method Selection */}
-                {selectedPackage && (
-                  <div>
-                    <h4 className="font-medium mb-3">Select Payment Method</h4>
-                    <div className="grid gap-2">
-                      {PAYMENT_METHODS.filter((method) => method.enabled).map(
-                        renderPaymentMethod
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <DialogFooter>
-              {!paymentSuccess ? (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={handleDialogClose}
-                    disabled={processingPayment}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    disabled={
-                      !selectedPackage ||
-                      !selectedPaymentMethod ||
-                      processingPayment
-                    }
-                    onClick={handleProceedToPayment}
-                  >
-                    {processingPayment ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Processing...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Complete Payment
-                      </div>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleDialogClose} className="w-full">
-                  Close
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </DashboardLayout>
   );
