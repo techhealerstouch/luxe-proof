@@ -22,6 +22,7 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             cd /var/www/luxe-proof
+            rm -rf /var/www/luxe-proof/.next/cache
             git fetch origin staging
             git checkout staging
             git pull origin staging
