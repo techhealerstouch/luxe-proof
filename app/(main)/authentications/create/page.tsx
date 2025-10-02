@@ -326,30 +326,29 @@ export default function CreateAuthenticationPage() {
       toast.error("Please fix the validation errors before proceeding");
       return;
     }
-
     const allData = form.getValues();
-
-    console.log("My all Data", allData);
     const finalValidation = fullFormSchema.safeParse(allData);
-    console.log("My Final Validation", finalValidation);
     if (!finalValidation.success) {
       setIsSubmitting(false);
       toast.error("Please complete all required fields");
       return;
     }
-
     const watchData = finalValidation.data;
-
     try {
+      await authenticatedWatchService.createAuthenticatedWatch(watchData);
       const deductResult = await deductCredits(creditValue);
       if (!deductResult) {
+        // Authentication was created but credit deduction failed
+        // You may want to handle this case specially
         throw new Error(deductResult.message || "Failed to deduct credits");
       }
-      await authenticatedWatchService.createAuthenticatedWatch(watchData);
+
+      // 3. Refresh credits display
       const creditService = CreditService.getInstance();
       await creditService.refreshCredits();
 
       toast.success("Authentication submitted successfully!");
+
       // Clean up and navigate
       localStorage.removeItem("validated_serial");
       localStorage.removeItem("serial_validation_timestamp");
@@ -359,9 +358,6 @@ export default function CreateAuthenticationPage() {
       router.push("/authentications/intro");
     } catch (error) {
       console.error("Submission error:", error);
-
-      // If authentication failed after credit deduction, you might want to refund
-      // This would require a refund credits endpoint
 
       if (error.message?.includes("credit")) {
         toast.error(error.message);
@@ -418,11 +414,10 @@ export default function CreateAuthenticationPage() {
             onValueChange={handleTabChange}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-9 h-auto p-1 bg-muted/50">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 h-auto p-1 bg-muted/50 gap-1">
               {tabsData.map((tab, index) => {
                 const Icon = tab.icon;
                 const isCompleted = completedTabs.has(tab.value);
-                const isActive = activeTab === tab.value;
 
                 return (
                   <TabsTrigger
@@ -444,12 +439,13 @@ export default function CreateAuthenticationPage() {
                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
                       )}
                     </div>
-                    <span className="leading-none">{tab.label}</span>
+                    <span className="leading-none text-center">
+                      {tab.label}
+                    </span>
                   </TabsTrigger>
                 );
               })}
             </TabsList>
-
             <CardHeader>
               <CardTitle className="text-xl">
                 {tabsData.find((tab) => tab.value === activeTab)?.title}

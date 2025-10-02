@@ -11,6 +11,7 @@ import {
   Calendar,
   Shield,
   Info,
+  AlertTriangle,
 } from "lucide-react";
 import Logo from "@/components/logo";
 
@@ -64,6 +65,7 @@ export default function VerifyNfcPage() {
 
   const [loading, setLoading] = useState(true);
   const [nfcData, setNfcData] = useState<NfcData | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const baseUrl = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -72,7 +74,16 @@ export default function VerifyNfcPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setNotFound(false);
         setError(null);
+
+        // Check if ref_code exists
+        if (!ref_code) {
+          setNotFound(true);
+          setError("No reference code provided");
+          setLoading(false);
+          return;
+        }
 
         const response = await axios.get<ApiResponse>(
           `${baseUrl}/api/nfc/public/${ref_code}`
@@ -81,19 +92,28 @@ export default function VerifyNfcPage() {
         if (response.data.valid && response.data.data) {
           setNfcData(response.data.data);
         } else {
+          setNotFound(true);
           setError(response.data.message || "Product not found");
         }
       } catch (err: any) {
-        setError(
-          err.response?.data?.message || "Failed to load product information"
-        );
+        setNotFound(true);
+        // Better error handling
+        if (err.response?.status === 404) {
+          setError("Product not found in our system");
+        } else if (err.response?.status === 500) {
+          setError("Server error occurred");
+        } else if (err.code === "ERR_NETWORK") {
+          setError("Network error - please check your connection");
+        } else {
+          setError(err.response?.data?.message || "An error occurred");
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (ref_code) fetchData();
-  }, [ref_code]);
+    fetchData();
+  }, [ref_code, baseUrl]);
 
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -114,6 +134,7 @@ export default function VerifyNfcPage() {
     }).format(amount);
   };
 
+  // Loading State
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
@@ -126,45 +147,21 @@ export default function VerifyNfcPage() {
             Verifying Product
           </p>
           <p className="text-sm text-slate-500 font-mono">
-            {ref_code.toUpperCase()}
+            {ref_code ? ref_code.toUpperCase() : "Loading..."}
           </p>
         </div>
       </div>
     );
   }
 
-  if (error || !nfcData) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-          <div className="flex flex-col items-center space-y-4 text-center">
-            <div className="bg-red-100 rounded-full p-3">
-              <XCircle className="h-10 w-10 text-red-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900">
-              Verification Failed
-            </h2>
-            <p className="text-slate-600">{error}</p>
-            <div className="w-full border-t border-slate-200 my-4"></div>
-            <div className="bg-slate-50 rounded-lg p-3 w-full">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-                Reference Code
-              </p>
-              <p className="font-mono text-sm font-semibold text-slate-900">
-                {ref_code.toUpperCase()}
-              </p>
-            </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  // Redirect to not-found page if error occurs
+  if (notFound) {
+    // This will be handled by Next.js not-found.tsx
+    return null;
   }
+
+  // Product Found - Display Details
+  if (!nfcData) return null;
 
   const { product, verified_at } = nfcData;
 

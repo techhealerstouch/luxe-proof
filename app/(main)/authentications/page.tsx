@@ -860,15 +860,6 @@ export default function AuthenticationsPage() {
                   record. Track and manage all your authentication certificates
                   in one place.
                 </p>
-                <Button asChild>
-                  <Link
-                    href="/authentications/intro"
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create First Authentication
-                  </Link>
-                </Button>
               </div>
             )}
           </CardContent>

@@ -608,13 +608,7 @@ export default function DashboardPage() {
                         const isVoided = auth.status === "voided";
 
                         return (
-                          <TableRow
-                            key={auth.id}
-                            className="hover:bg-muted/50 cursor-pointer"
-                            onClick={() =>
-                              router.push(`/authentications/${auth.id}`)
-                            }
-                          >
+                          <TableRow key={auth.id} className="hover:bg-muted/50">
                             <TableCell>
                               <div
                                 className={`font-medium ${
@@ -699,23 +693,21 @@ export default function DashboardPage() {
                     No recent authentications
                   </p>
                   <Button
-                    asChild
-                    size="sm"
-                    disabled={userCredits < deductCredits || creditsLoading}
-                    className={
+                    onClick={() => router.push("/authentications/intro")}
+                    className={`justify-start ${
                       userCredits < deductCredits || creditsLoading
                         ? "opacity-50"
                         : ""
-                    }
+                    }`}
+                    disabled={userCredits <= 0 || creditsLoading}
                   >
-                    <Link href="/authentications/intro">
-                      <Plus className="h-4 w-4 mr-2" />
-                      {userCredits < deductCredits
-                        ? "Need Credits"
-                        : creditsLoading
-                        ? "Loading..."
-                        : "Start First Authentication"}
-                    </Link>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Start Authentication{" "}
+                    {userCredits < deductCredits
+                      ? "(Insufficient Credits)"
+                      : creditsLoading
+                      ? "(Loading...)"
+                      : ""}
                   </Button>
                 </div>
               )}

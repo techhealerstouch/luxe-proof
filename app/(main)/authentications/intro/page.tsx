@@ -131,110 +131,108 @@ export default function Intro() {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-center min-h-screen px-4 py-8">
-        <Card className="w-full max-w-4xl shadow-2xl rounded-3xl p-8 border-2">
-          <CardContent className="space-y-8">
-            <div className="text-center space-y-4">
-              <IconCompany width={100} height={20} className="mx-auto" />
-              <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
-                The Expert's 8-Step Watch
-                <br /> Authentication Protocol
-              </h1>
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="w-full max-w-4xl">
+          <div className="text-center space-y-4">
+            <IconCompany width={100} height={20} className="mx-auto" />
+            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+              The Expert's 8-Step Watch
+              <br /> Authentication Protocol
+            </h1>
 
-              <p className="text-muted-foreground text-base max-w-1xl mx-auto leading-relaxed">
-                This protocol provides a systematic framework for the
-                comprehensive authentication and condition assessment of luxury
-                timepieces. Each step builds upon the last, creating a complete
-                picture of the watch's history, authenticity, and current state.
-              </p>
+            <p className="text-muted-foreground text-base max-w-1xl mx-auto leading-relaxed">
+              This protocol provides a systematic framework for the
+              comprehensive authentication and condition assessment of luxury
+              timepieces. Each step builds upon the last, creating a complete
+              picture of the watch's history, authenticity, and current state.
+            </p>
 
-              <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-full text-xs text-blue-700 dark:text-blue-300">
-                <User className="w-3 h-3" />
-                <span>Includes comprehensive user information collection</span>
-              </div>
+            <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-full text-xs text-blue-700 dark:text-blue-300">
+              <User className="w-3 h-3" />
+              <span>Includes comprehensive user information collection</span>
+            </div>
+          </div>
+
+          {/* Serial Number Input */}
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="serialNumber" className="text-sm font-medium">
+                Watch Serial Number
+              </Label>
+              <Input
+                id="serialNumber"
+                type="text"
+                placeholder="Enter serial number"
+                value={serialNumber}
+                onChange={handleSerialNumberChange}
+                className="w-full"
+                disabled={isChecking}
+              />
             </div>
 
-            {/* Serial Number Input */}
-            <div className="max-w-md mx-auto space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="serialNumber" className="text-sm font-medium">
-                  Watch Serial Number
-                </Label>
-                <Input
-                  id="serialNumber"
-                  type="text"
-                  placeholder="Enter serial number"
-                  value={serialNumber}
-                  onChange={handleSerialNumberChange}
-                  className="w-full"
-                  disabled={isChecking}
-                />
-              </div>
+            {/* Check Serial Number Button */}
+            {!isValidated && (
+              <Button
+                onClick={handleCheckSerialNumber}
+                disabled={!isSerialNumberEntered || isChecking}
+                variant="outline"
+                className="w-full"
+              >
+                {isChecking ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                    Checking Serial Number...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4 mr-2" />
+                    Check Serial Number
+                  </>
+                )}
+              </Button>
+            )}
 
-              {/* Check Serial Number Button */}
-              {!isValidated && (
-                <Button
-                  onClick={handleCheckSerialNumber}
-                  disabled={!isSerialNumberEntered || isChecking}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {isChecking ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Checking Serial Number...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4 mr-2" />
-                      Check Serial Number
-                    </>
-                  )}
-                </Button>
-              )}
-
-              {/* Validation Error */}
-              {validationError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                  <p className="text-sm text-red-700 dark:text-red-300">
-                    {validationError}
-                  </p>
-                </div>
-              )}
-
-              {/* Success Message */}
-              {isValidated && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    Serial number validated successfully! You can now proceed
-                    with authentication.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* 8-Step Authentication Button - Only show when validated */}
-            {isValidated && (
-              <div className="flex justify-center">
-                <Button
-                  asChild
-                  size="sm"
-                  className="px-6 py-2 text-sm rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 group"
-                >
-                  <Link
-                    href="/authentications/create"
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
-                    Start 8-Step Authentication
-                  </Link>
-                </Button>
+            {/* Validation Error */}
+            {validationError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  {validationError}
+                </p>
               </div>
             )}
-          </CardContent>
-        </Card>
+
+            {/* Success Message */}
+            {isValidated && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Serial number validated successfully! You can now proceed with
+                  authentication.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 8-Step Authentication Button - Only show when validated */}
+          {isValidated && (
+            <div className="flex justify-center">
+              <Button
+                asChild
+                size="sm"
+                className="px-6 py-2 text-sm rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 group"
+              >
+                <Link
+                  href="/authentications/create"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+                  Start 8-Step Authentication
+                </Link>
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );
