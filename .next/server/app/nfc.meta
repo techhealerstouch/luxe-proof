@@ -2,6 +2,6 @@
   "headers": {
     "x-nextjs-stale-time": "4294967294",
     "x-nextjs-prerender": "1",
-    "x-next-cache-tags": "_N_T_/layout,_N_T_/nfc/layout,_N_T_/nfc/page,_N_T_/nfc"
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(main)/layout,_N_T_/(main)/nfc/layout,_N_T_/(main)/nfc/page,_N_T_/nfc"
   }
 }

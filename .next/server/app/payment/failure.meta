@@ -2,6 +2,6 @@
   "headers": {
     "x-nextjs-stale-time": "4294967294",
     "x-nextjs-prerender": "1",
-    "x-next-cache-tags": "_N_T_/layout,_N_T_/payment/layout,_N_T_/payment/failure/layout,_N_T_/payment/failure/page,_N_T_/payment/failure"
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(main)/layout,_N_T_/(main)/payment/layout,_N_T_/(main)/payment/failure/layout,_N_T_/(main)/payment/failure/page,_N_T_/payment/failure"
   }
 }

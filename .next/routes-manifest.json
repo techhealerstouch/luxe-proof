@@ -13,7 +13,16 @@
     }
   ],
   "headers": [],
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/[ref_code]",
+      "regex": "^/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPref_code": "nxtPref_code"
+      },
+      "namedRegex": "^/(?<nxtPref_code>[^/]+?)(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
