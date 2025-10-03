@@ -20,7 +20,6 @@ import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 type FormValues = {
   brand: string;
   model: string;
-  user_type: string;
   company_name: string;
   date_of_sale: string;
   company_address: string;
@@ -105,7 +104,6 @@ export function UserInformationForm({
   const { handleSubmit, control } = form;
 
   // Watch for user_type value
-  const userType = useWatch({ control, name: "user_type" });
 
   return (
     <Form {...form}>
@@ -149,70 +147,6 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-        {/* User Type */}
-        <FormField
-          name={"user_type" as keyof FormValues}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>User Type</FormLabel>
-              <FormControl>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value || ""}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select user type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="company">Company</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Company Fields */}
-        {userType === "company" && (
-          <>
-            <FormField
-              name={"company_name" as keyof FormValues}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company Name *</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      autoComplete="organization"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              name={"company_address" as keyof FormValues}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      autoComplete="street-address"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
-
         {/* Full Name */}
         <FormField
           name={"name" as keyof FormValues}
@@ -230,6 +164,43 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
+        {/* Company Fields */}
+        <>
+          <FormField
+            name={"company_name" as keyof FormValues}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Company Name (Optional)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={field.value || ""}
+                    autoComplete="organization"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name={"company_address" as keyof FormValues}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Company Address (Optional)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={field.value || ""}
+                    autoComplete="street-address"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </>
+
         {/* Email */}
         <FormField
           name={"email" as keyof FormValues}

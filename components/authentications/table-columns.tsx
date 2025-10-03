@@ -52,7 +52,7 @@ import {
   Nfc,
 } from "lucide-react";
 import { WatchAuthentication } from "@/types/watch-authentication";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { EditAuthenticationModal } from "@/components/authentications/edit-authentication-modal";
 import {
   checkExistingNfc,
@@ -659,16 +659,9 @@ const TableActions: React.FC<TableActionsProps> = ({
   const canEdit = !isVoided && isEditAllowedFor3Days(watchData.created_at);
   const handleSendEmailCertificate = async () => {
     setEmailLoading(true);
-    toast({
-      title: "Generating Certificate...",
-      description:
-        "Please wait while we create your PDF certificate. This may take 30-60 seconds.",
-      variant: "default",
-    });
 
     try {
       const token = localStorage.getItem("accessToken");
-
       // Send to backend
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/authentications/${watchData.id}/send-certificate`,
@@ -681,28 +674,15 @@ const TableActions: React.FC<TableActionsProps> = ({
             Accept: "application/json",
             "Content-Type": "application/json",
           },
-          timeout: 30000, // 30 second timeout for PDF generation
         }
       );
-
       const result = await response.data;
 
-      toast({
-        title: "Certificate Sent Successfully",
-        description: `Authentication certificate has been sent to ${watchData.email}`,
-        variant: "default",
-      });
-
-      setEmailDialogOpen(false);
-      window.location.reload();
+      toast.success("Certificate Sent Successfully");
+      setEmailDialogOpen(true);
     } catch (error) {
       console.error("Email certificate failed:", error);
-      toast({
-        title: "Error",
-        description:
-          error.message || "Failed to send certificate. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to send certificate.");
     } finally {
       setEmailLoading(false);
     }

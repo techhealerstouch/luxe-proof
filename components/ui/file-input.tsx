@@ -436,21 +436,6 @@ const FileInput = ({
               );
             })}
           </div>
-
-          {/* Add more files button for single file mode when file is uploaded */}
-          {isSingleFile && value.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => inputRef.current?.click()}
-              disabled={disabled}
-              className="w-full"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Replace File
-            </Button>
-          )}
         </div>
       )}
     </div>

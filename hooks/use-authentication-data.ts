@@ -25,7 +25,6 @@ export const useAuthenticationData = (): UseAuthenticationDataReturn => {
     contact_method: apiData.contact_method,
     email: apiData.email,
     phone: apiData.phone,
-    user_type: apiData.user_type,
     user_information: apiData.user_information || apiData.id,
     brand: apiData.brand,
     model: apiData.model,

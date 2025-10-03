@@ -132,7 +132,7 @@ export default function Intro() {
   return (
     <DashboardLayout>
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="w-full max-w-4xl">
+        <div className="w-full max-w-2xl">
           <div className="text-center space-y-4">
             <IconCompany width={100} height={20} className="mx-auto" />
             <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">

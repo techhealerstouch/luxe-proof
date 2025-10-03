@@ -6,7 +6,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,7 +18,6 @@ import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 type FormValues = {
   brand: string;
   model: string;
-  user_type: string;
   date_of_sale: string;
   company_address: string;
   name: string;
@@ -38,7 +36,10 @@ export function UserInformationForm({
   onSubmit,
 }: UserInformationFormProps) {
   const { handleSubmit, control } = form;
-  const userType = useWatch({ control, name: "user_type" });
+  const allValues = useWatch({ control });
+
+  console.log("Current form values:", allValues);
+
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-y-4">
@@ -81,70 +82,6 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
-        {/* User Type */}
-        <FormField
-          name={"user_type" as keyof FormValues}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>User Type</FormLabel>
-              <FormControl>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value || ""}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select user type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="company">Company</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Company Fields */}
-        {userType === "company" && (
-          <>
-            <FormField
-              name={"company_name" as keyof FormValues}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company Name *</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      autoComplete="organization"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              name={"company_address" as keyof FormValues}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      autoComplete="street-address"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
-
         {/* Full Name */}
         <FormField
           name={"name" as keyof FormValues}
@@ -162,6 +99,43 @@ export function UserInformationForm({
             </FormItem>
           )}
         />
+
+        {/* Company Fields */}
+
+        <FormField
+          name={"company_name" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Company Name (Optional)</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  autoComplete="organization"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name={"company_address" as keyof FormValues}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Company Address (Optional)</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  autoComplete="street-address"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* Email */}
         <FormField
           name={"email" as keyof FormValues}

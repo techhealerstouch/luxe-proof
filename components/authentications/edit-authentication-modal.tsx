@@ -153,6 +153,7 @@ export function EditAuthenticationModal({
       account_id: watchData?.account_id || "",
       name: watchData?.name || "",
       email: watchData?.email || "",
+      phone: watchData?.phone || "",
       date_of_sale: watchData?.date_of_sale || "",
       brand: watchData?.brand || "",
       model: watchData?.model || "",
@@ -806,6 +807,7 @@ export function EditAuthenticationModal({
                     form={step2Form}
                     onSubmit={onSubmitStep2}
                     onBack={onBackStep2}
+                    watchData={watchData}
                   />
                 </CardContent>
               </Card>
@@ -828,6 +830,7 @@ export function EditAuthenticationModal({
                     form={step3Form}
                     onSubmit={onSubmitStep3}
                     onBack={onBackStep3}
+                    watchData={watchData}
                   />
                 </CardContent>
               </Card>
@@ -851,6 +854,7 @@ export function EditAuthenticationModal({
                     onSubmit={onSubmitStep4}
                     onBack={onBackStep4}
                     step={4}
+                    watchData={watchData}
                   />
                 </CardContent>
               </Card>
@@ -873,6 +877,7 @@ export function EditAuthenticationModal({
                     onSubmit={onSubmitStep5}
                     onBack={onBackStep5}
                     step={5}
+                    watchData={watchData}
                   />
                 </CardContent>
               </Card>
@@ -895,6 +900,7 @@ export function EditAuthenticationModal({
                     onSubmit={onSubmitStep6}
                     onBack={onBackStep6}
                     step={6}
+                    watchData={watchData}
                   />
                 </CardContent>
               </Card>
@@ -917,6 +923,7 @@ export function EditAuthenticationModal({
                     onSubmit={onSubmitStep7}
                     onBack={onBackStep7}
                     step={7}
+                    watchData={watchData}
                   />
                 </CardContent>
               </Card>
@@ -941,6 +948,7 @@ export function EditAuthenticationModal({
                       onSubmit={onSubmitStep8}
                       onBack={onBackStep8}
                       step={8}
+                      watchData={watchData}
                     />
                   </div>
                 </CardContent>

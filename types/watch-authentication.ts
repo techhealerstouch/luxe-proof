@@ -84,7 +84,6 @@ export interface WatchAuthentication {
   email?: string;
   phone?: string;
   contact_method?: string;
-  user_type?: string;
   company_name?: string;
   company_address?: string;
   brand: string;
