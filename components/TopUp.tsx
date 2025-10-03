@@ -368,7 +368,7 @@ const TopUp: React.FC<TopUpProps> = ({
         }
       );
 
-      const data = await response.json();
+      const data = await response?.data;
 
       if (data.success && data.invoice_url) {
         setInvoiceUrl(data.invoice_url);
