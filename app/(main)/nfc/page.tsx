@@ -38,9 +38,9 @@ interface AuthenticatedProduct {
   created_at: string;
   date_of_sale: string;
   email: string;
+  phone: string;
   estimated_production_year: string;
   final_summary: string;
-  phone: string;
   status: string | null;
   updated_at: string;
   user_id: number;

@@ -377,7 +377,6 @@ const TopUp: React.FC<TopUpProps> = ({
       if (data.success && data.invoice_url) {
         setInvoiceUrl(data.invoice_url);
         setCurrentStep("success");
-
         setTimeout(() => {
           handleRedirectToInvoice();
         }, 2000);
@@ -450,7 +449,7 @@ const TopUp: React.FC<TopUpProps> = ({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {currentStep === "success" ? (

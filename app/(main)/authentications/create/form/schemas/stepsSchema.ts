@@ -6,9 +6,6 @@ export const UserInformationSchema = z.object({
     required_error: "Please select a watch brand",
   }),
   model: z.string().min(1, { message: "Model is required" }),
-  user_type: z.enum(["personal", "company"], {
-    required_error: "Please select a user type",
-  }),
 
   date_of_sale: z.string().optional(),
   company_name: z.string().optional(),

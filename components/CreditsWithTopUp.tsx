@@ -39,7 +39,6 @@ const CreditsWithTopUp: React.FC<CreditsWithTopUpProps> = ({
           buttonText={topUpButtonText}
           buttonVariant={topUpButtonVariant}
           buttonSize={size}
-          packages={packages}
         />
       )}
     </div>
