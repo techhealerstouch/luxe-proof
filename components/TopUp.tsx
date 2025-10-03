@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/auth-provider";
 import { useCredits } from "@/hooks/use-credits";
 import { fetchPackages } from "@/lib/api-top-up";
+import axios from "axios";
 
 interface Package {
   id: string;
@@ -349,26 +350,21 @@ const TopUp: React.FC<TopUpProps> = ({
         },
       };
 
-      // For predefined packages, use credit_id
       if (activeTab === "packages" && selectedPackageData) {
         payload.credit_id = selectedPackageData.id;
-      }
-      // For custom packages, you'll need to create/handle this in backend
-      // This assumes you have an endpoint that accepts custom_authentications
-      else if (activeTab === "custom") {
+      } else if (activeTab === "custom") {
         payload.custom_authentications = parseInt(customAuthNumber);
       }
 
-      const response = await fetch(
+      const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/top-up`,
+        payload,
         {
-          method: "POST",
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`, // Adjust based on your auth
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
-          body: JSON.stringify(payload),
         }
       );
 
