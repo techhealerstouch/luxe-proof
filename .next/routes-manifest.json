@@ -67,6 +67,18 @@
       "namedRegex": "^/billing(?:/)?$"
     },
     {
+      "page": "/credits/failure",
+      "regex": "^/credits/failure(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/credits/failure(?:/)?$"
+    },
+    {
+      "page": "/credits/success",
+      "regex": "^/credits/success(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/credits/success(?:/)?$"
+    },
+    {
       "page": "/dashboard",
       "regex": "^/dashboard(?:/)?$",
       "routeKeys": {},
@@ -85,40 +97,16 @@
       "namedRegex": "^/nfc(?:/)?$"
     },
     {
-      "page": "/nfc-public-view",
-      "regex": "^/nfc\\-public\\-view(?:/)?$",
+      "page": "/order-tracking",
+      "regex": "^/order\\-tracking(?:/)?$",
       "routeKeys": {},
-      "namedRegex": "^/nfc\\-public\\-view(?:/)?$"
-    },
-    {
-      "page": "/payment/failure",
-      "regex": "^/payment/failure(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/payment/failure(?:/)?$"
-    },
-    {
-      "page": "/payment/success",
-      "regex": "^/payment/success(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/payment/success(?:/)?$"
-    },
-    {
-      "page": "/pricing",
-      "regex": "^/pricing(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/pricing(?:/)?$"
+      "namedRegex": "^/order\\-tracking(?:/)?$"
     },
     {
       "page": "/profile",
       "regex": "^/profile(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/profile(?:/)?$"
-    },
-    {
-      "page": "/register",
-      "regex": "^/register(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/register(?:/)?$"
     },
     {
       "page": "/settings",
