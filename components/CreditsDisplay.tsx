@@ -1,85 +1,48 @@
 // components/CreditsDisplay.tsx
 import React from "react";
 import { Coins, AlertCircle, RefreshCw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCredits } from "@/hooks/use-credits";
 
 interface CreditsDisplayProps {
-  size?: "sm" | "md" | "lg";
-  variant?: "default" | "secondary" | "destructive" | "outline";
   showRefresh?: boolean;
-  className?: string;
 }
 
 const CreditsDisplay: React.FC<CreditsDisplayProps> = ({
-  size = "md",
-  variant,
   showRefresh = false,
-  className = "",
 }) => {
   const { credits, loading, error, refetch } = useCredits();
 
-  const getBadgeVariant = () => {
-    if (variant) return variant;
-    if (error) return "destructive";
-    if (credits < 1000) return "destructive";
-    if (credits < 5000) return "secondary";
-    return "default";
-  };
-
-  const getSizeClasses = () => {
-    const classes = {
-      sm: { badge: "text-xs px-2 py-1", icon: "h-3 w-3", button: "px-2 py-1" },
-      md: {
-        badge: "text-sm px-2.5 py-1.5",
-        icon: "h-4 w-4",
-        button: "px-3 py-1.5",
-      },
-      lg: {
-        badge: "text-base px-3 py-2",
-        icon: "h-5 w-5",
-        button: "px-4 py-2",
-      },
-    };
-    return classes[size];
-  };
-
-  const sizeClasses = getSizeClasses();
-
   if (loading) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <Badge
-          variant="outline"
-          className={`flex items-center gap-1 ${sizeClasses.badge}`}
-        >
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          Loading...
-        </Badge>
+      <div className="flex items-center gap-2">
+        <Card className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-sm">
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span className="text-xs font-semibold text-muted-foreground">
+            Loading...
+          </span>
+        </Card>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <Badge
-          variant="destructive"
-          className={`flex items-center gap-1 ${sizeClasses.badge}`}
-        >
-          <AlertCircle className={sizeClasses.icon} />
-          Error
-        </Badge>
+      <div className="flex items-center gap-2">
+        <Card className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/5 px-3 py-2 shadow-sm">
+          <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+          <span className="text-xs font-semibold text-destructive">Error</span>
+        </Card>
         {showRefresh && (
           <Button
             variant="outline"
-            size="sm"
-            className={sizeClasses.button}
+            size="icon"
+            className="h-8 w-8 rounded-lg hover:bg-destructive/10"
             onClick={refetch}
             title="Retry loading credits"
           >
-            <RefreshCw className={sizeClasses.icon} />
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
@@ -87,23 +50,29 @@ const CreditsDisplay: React.FC<CreditsDisplayProps> = ({
   }
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <Badge
-        variant={getBadgeVariant()}
-        className={`flex items-center gap-1 ${sizeClasses.badge}`}
-      >
-        <Coins className={sizeClasses.icon} />
-        {credits.toLocaleString()} credits
-      </Badge>
+    <div className="flex items-center gap-2">
+      <Card className="flex items-center gap-2 rounded-lg border bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/30 dark:to-orange-950/30 border-amber-200/60 dark:border-amber-800/60 px-3 py-2 shadow-sm transition-all hover:shadow-md">
+        <div className="flex items-center justify-center rounded-md bg-gradient-to-br from-amber-400 to-yellow-500 dark:from-amber-500 dark:to-yellow-600 p-1.5 shadow-sm">
+          <Coins className="h-3.5 w-3.5 text-white" />
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-sm font-bold tabular-nums text-foreground">
+            {credits.toLocaleString()}
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            Credits
+          </span>
+        </div>
+      </Card>
       {showRefresh && (
         <Button
-          variant="ghost"
-          size="sm"
-          className={sizeClasses.button}
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg transition-all hover:bg-accent hover:rotate-180"
           onClick={refetch}
           title="Refresh credits"
         >
-          <RefreshCw className={sizeClasses.icon} />
+          <RefreshCw className="h-3.5 w-3.5 transition-transform" />
         </Button>
       )}
     </div>

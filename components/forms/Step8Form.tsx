@@ -99,82 +99,6 @@ export function Step8Form({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          name="watch_movement_analysis_image_path"
-          render={({ field }) => {
-            const handleFileChange = (newFiles: File[]) => {
-              if (newFiles.length > 0) {
-                field.onChange(newFiles[0]);
-              } else {
-                field.onChange(null);
-              }
-            };
-
-            const getFileInputValue = () => {
-              if (!field.value) return [];
-              if (field.value instanceof File) {
-                return [field.value];
-              }
-              return [];
-            };
-
-            const getDisplayText = () => {
-              if (!field.value) return "No file selected";
-              if (field.value instanceof File) {
-                return field.value.name;
-              }
-              if (typeof field.value === "string") {
-                return field.value.split("/").pop() || field.value;
-              }
-              return "Unknown file";
-            };
-
-            return (
-              <FormItem>
-                <div className="flex items-center gap-2 mb-3">
-                  <Camera className="h-4 w-4 text-red-600" />
-                  <FormLabel className="text-sm font-semibold">
-                    Back View {!field.value && "*"}
-                  </FormLabel>
-                </div>
-                <p className="text-xs text-gray-600 mb-3">
-                  Case back showing serial number and engravings
-                </p>
-
-                {/* Show existing file if it's a string path */}
-                {field.value && typeof field.value === "string" && (
-                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-red-800">
-                      <Camera className="h-4 w-4" />
-                      <span>Current file: {getDisplayText()}</span>
-                    </div>
-                  </div>
-                )}
-
-                <ExistingFileDisplay
-                  fieldName="watch_movement_analysis_image_path"
-                  field={field}
-                />
-
-                <FormControl>
-                  <FileInput
-                    value={getFileInputValue()}
-                    onChange={handleFileChange}
-                    accept="image/png,image/jpeg,image/jpg"
-                    maxSize={2}
-                    maxFiles={1}
-                    className="border-dashed border-2 border-red-200 hover:border-red-300"
-                  />
-                </FormControl>
-
-                <div className="text-xs text-gray-500 mt-1">
-                  Selected: {getDisplayText()}
-                </div>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
         {/* Hidden Status Field */}
         <FormField
           name="status"
@@ -204,10 +128,11 @@ export function Step8Form({
                     <SelectTrigger className="text-sm mt-3">
                       <SelectValue placeholder="Select authenticity verdict" />
                     </SelectTrigger>
+
                     <SelectContent>
-                      <SelectItem value="genuine">Genuine</SelectItem>
-                      <SelectItem value="counterfeit">Counterfeit</SelectItem>
-                      <SelectItem value="genuine (aftermarket)">
+                      <SelectItem value="Genuine">Genuine</SelectItem>
+                      <SelectItem value="Counterfeit">Counterfeit</SelectItem>
+                      <SelectItem value="Genuine (Aftermarket)">
                         Genuine (Aftermarket)
                       </SelectItem>
                     </SelectContent>

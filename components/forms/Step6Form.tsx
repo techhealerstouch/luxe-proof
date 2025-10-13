@@ -71,47 +71,6 @@ export function Step6Form({
     return null;
   };
 
-  const getFileName = (filePath: string): string => {
-    return filePath.split("/").pop() || filePath;
-  };
-
-  const ExistingFileDisplay = ({
-    fieldName,
-    field,
-  }: {
-    fieldName: string;
-    field: any;
-  }) => {
-    const existingPath = getExistingFilePath(fieldName);
-    const isRemoved = filesToRemove.includes(existingPath || "");
-
-    if (!existingPath || isRemoved) return null;
-
-    return (
-      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900">
-              Current file: {getFileName(existingPath)}
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleRemoveExistingFile(fieldName, existingPath)}
-            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <p className="text-xs text-blue-700 mt-1">
-          Upload a new file to replace this one, or click X to remove it.
-        </p>
-      </div>
-    );
-  };
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -156,11 +115,6 @@ export function Step6Form({
                     </div>
                   </div>
                 )}
-
-                <ExistingFileDisplay
-                  fieldName="watch_movement_analysis_image_path"
-                  field={field}
-                />
 
                 <FormControl>
                   <FileInput

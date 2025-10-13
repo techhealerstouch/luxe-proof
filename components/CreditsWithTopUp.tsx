@@ -31,8 +31,8 @@ const CreditsWithTopUp: React.FC<CreditsWithTopUpProps> = ({
   packages,
 }) => {
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <CreditsDisplay size={size} variant={variant} showRefresh={showRefresh} />
+    <div className={`flex items-center gap-3 ${className}`}>
+      <CreditsDisplay showRefresh={showRefresh} />
 
       {showTopUp && (
         <TopUp

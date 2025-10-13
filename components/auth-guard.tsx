@@ -21,9 +21,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isPublicRoute = PUBLIC_ROUTES.some((route) =>
-    pathname.startsWith(route)
-  );
+  // ✅ Check if it's a public route OR an NFC verification page
+  const isPublicRoute =
+    PUBLIC_ROUTES.some((route) => pathname.startsWith(route)) ||
+    // Match any route that looks like a ref_code (e.g., /ABC123, /XYZ789)
+    /^\/[A-Za-z0-9_-]+$/.test(pathname);
 
   useEffect(() => {
     if (!isLoading) {

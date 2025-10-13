@@ -21,6 +21,7 @@ import {
   BarChart3,
   UserRound,
   CircleDollarSign,
+  ShoppingBag,
   Watch,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +29,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import TopNavigation from "@/components/top-navigation";
 import Logo from "./logo";
+import IconCompany from "./icon";
 
 const menuItems = [
   {
@@ -71,14 +73,18 @@ function SidebarContent({
   return (
     <div className="bg-sidebar border-r border-sidebar-border flex flex-col h-full">
       {/* Sidebar Header */}
-      <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
+      <div className="flex items-center gap-2 px-4 py-4 border-sidebar-border">
         {isOpen ? (
           <span className="font-semibold">
-            <Logo width={300} height={20} className="mx-auto" />
+            <Link href="/">
+              <Logo width={300} height={20} className="mx-auto" />
+            </Link>
           </span>
         ) : (
           <div className="mx-auto">
-            <Logo width={32} height={32} className="mx-auto" />
+            <Link href="/">
+              <IconCompany width={100} height={20} className="mx-auto" />
+            </Link>
           </div>
         )}
       </div>
@@ -94,23 +100,40 @@ function SidebarContent({
                 </h2>
               )}
             </div>
-            {menuItems.map((item) => (
-              <Link
-                key={item.title}
-                href={item.url}
-                onClick={handleLinkClick}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  pathname === item.url
-                    ? "text-sidebar-accent-foreground" // Fixed: bg-[#dcbb7e]
-                    : "text-sidebar-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {isOpen && <span className="truncate">{item.title}</span>}
-              </Link>
-            ))}
+            {menuItems.map((item) => {
+              const isActive = pathname === item.url;
+              return (
+                <Link
+                  key={item.title}
+                  href={item.url}
+                  onClick={handleLinkClick}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    isActive
+                      ? "text-sidebar-accent-foreground bg-sidebar-accent"
+                      : "text-sidebar-foreground",
+                    !isOpen && "justify-center"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex items-center justify-center rounded-md transition-colors",
+                      isActive ? "bg-black text-white p-1.5" : "p-0",
+                      isOpen ? "h-7 w-7" : "h-8 w-8"
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "shrink-0",
+                        isActive ? "h-4 w-4" : isOpen ? "h-4 w-4" : "h-5 w-5"
+                      )}
+                    />
+                  </div>
+                  {isOpen && <span className="truncate">{item.title}</span>}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -158,6 +181,12 @@ function SidebarContent({
                 Billing
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/order-tracking" onClick={handleLinkClick}>
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                Orders
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
@@ -177,6 +206,16 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize sidebar state from localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem("sidebarOpen");
+    if (savedState !== null) {
+      setSidebarOpen(savedState === "true");
+    }
+    setIsInitialized(true);
+  }, []);
 
   // Check if screen is mobile
   useEffect(() => {
@@ -194,13 +233,23 @@ export default function DashboardLayout({
     if (isMobile) {
       setMobileSheetOpen(!mobileSheetOpen);
     } else {
-      setSidebarOpen(!sidebarOpen);
+      const newState = !sidebarOpen;
+      setSidebarOpen(newState);
+      localStorage.setItem("sidebarOpen", String(newState));
     }
   };
 
   const handleMobileLinkClick = () => {
     setMobileSheetOpen(false);
   };
+
+  // Desktop: Don't pass onLinkClick so sidebar stays in its state
+  // Mobile: Pass onLinkClick to close the sheet
+
+  // Prevent flash of incorrect sidebar state
+  if (!isInitialized) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -233,7 +282,7 @@ export default function DashboardLayout({
         />
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6">
-          <div className="space-y-6">{children}</div>
+          <div className="space-y-6 h-full">{children}</div>
         </main>
       </div>
     </div>

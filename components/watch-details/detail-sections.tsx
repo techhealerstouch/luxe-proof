@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Image } from "lucide-react";
 import { WatchAuthentication } from "@/types/watch-authentication";
+import axios from "axios";
 
 // Helper function to get file icon based on file path
 const getFileIcon = (filePath: string | null) => {
@@ -26,7 +27,7 @@ interface DocumentDownloadButtonProps {
 const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
   filePath,
   label,
-  baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
+  baseUrl = process.env.NEXT_PUBLIC_API_URL,
 }) => {
   if (!filePath) {
     return (
@@ -39,55 +40,34 @@ const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
     );
   }
 
-  // Use API route for download instead of direct storage access
-  const fullUrl = `${baseUrl}/download/${filePath}`;
-  const filename =
-    filePath.split("/").pop() || label.toLowerCase().replace(/\s+/g, "_");
-
   const handleDownload = async () => {
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await fetch(fullUrl, {
-        method: "GET",
+      const cleanPath = filePath.startsWith("/")
+        ? filePath.substring(1)
+        : filePath;
+      const fullUrl = `${baseUrl}/api/download/${cleanPath}`;
+      console.log("Download URL:", fullUrl);
+      const response = await axios.get(fullUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: "*/*",
         },
+        responseType: "blob",
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Get the blob with proper content type
-      const contentType =
-        response.headers.get("content-type") || "application/octet-stream";
-      const blob = await response.blob();
-      // Create blob with correct MIME type
-      const properBlob = new Blob([blob], { type: contentType });
-
-      const downloadUrl = window.URL.createObjectURL(properBlob);
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = filename;
-
+      link.href = url;
+      const filename = filePath.split("/").pop() || "download.png";
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-
-      // Cleanup after download
-      setTimeout(() => {
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 1000);
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      alert(
-        `Download failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      console.error("Download failed:", error);
     }
   };
-
   return (
     <div>
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
@@ -211,9 +191,7 @@ export const SerialInfoSection: React.FC<{
   watchData: WatchAuthentication;
 }> = ({ watchData }) => {
   const serialInfo = watchData.serial_and_model_number_cross_reference;
-
   if (!serialInfo) return null;
-
   return (
     <DetailSection title="Serial & Model Information">
       <DocumentDownloadButton

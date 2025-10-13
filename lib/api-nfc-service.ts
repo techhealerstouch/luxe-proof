@@ -20,6 +20,33 @@ interface ExistingNfcCheck {
   };
 }
 
+interface Product {
+  id: number;
+  name: string;
+  brand: string;
+  model: string;
+  date_of_sale: string;
+  estimated_production_year: number;
+  authenticity_verdict: string;
+  final_summary: string;
+  contact_method: string;
+  email: string;
+  phone: string;
+  company_name?: string;
+  company_address?: string;
+  account_id: number;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PublicProfile {
+  ref_code: string;
+  status: string;
+  verified_at: string;
+  product: Product;
+}
+
 interface ApiResponse<T = any> {
   success?: boolean;
   valid?: boolean;
@@ -112,5 +139,31 @@ export const linkNfc = async (
   return await response.json();
 };
 
+/**
+ * View public profile by reference code
+ */
+export const viewPublicProfile = async (
+  refCode: string
+): Promise<ApiResponse<PublicProfile>> => {
+  const authToken = getAuthToken();
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/nfc/public-profile/${refCode}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to load public profile");
+  }
+
+  return await response.json();
+};
+
 // Export types for use in components
-export type { NfcLink, ExistingNfcCheck, ApiResponse };
+export type { NfcLink, ExistingNfcCheck, PublicProfile, Product, ApiResponse };

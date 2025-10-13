@@ -1,5 +1,3 @@
-import type { User } from "./api-service";
-
 class AuthService {
   private baseUrl = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -22,30 +20,6 @@ class AuthService {
 
     const json = await response.json();
     return json;
-  }
-
-  async register(data: {
-    businessName: string;
-    slug: string;
-    fullName: string;
-    email: string;
-    password: string;
-  }) {
-    const response = await fetch(`${this.baseUrl}/api/register`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Registration failed");
-    }
-
-    return await response.json();
   }
 
   async exchangeAuthorizationCode(code: string) {
@@ -86,10 +60,9 @@ class AuthService {
       );
     }
 
-    // Clean up the stored code_verifier after successful token exchange
     sessionStorage.removeItem("pkce_code_verifier");
 
-    return data; // access_token, refresh_token, etc.
+    return data;
   }
 
   async getUser(token: string) {
@@ -103,7 +76,7 @@ class AuthService {
     return res.json();
   }
 
-  async getCurrentUser(): Promise<User> {
+  async getCurrentUser() {
     const token = localStorage.getItem("accessToken");
 
     const response = await fetch(`${this.baseUrl}/api/me`, {
@@ -138,6 +111,42 @@ class AuthService {
     return data.access_token;
   }
 
+  async checkSerialNumber(serialNumber: string) {
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) {
+      throw new Error("Authentication required. Please log in.");
+    }
+
+    const response = await fetch(
+      `${this.baseUrl}/api/auth-products/check-serial`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serial_number: serialNumber.trim(),
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message ||
+          errorData.error ||
+          "Failed to validate serial number"
+      );
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
   async logout() {
     try {
       // Remove access token from localStorage
@@ -148,8 +157,6 @@ class AuthService {
         method: "POST",
         credentials: "include", // include cookies
       });
-
-      // Optionally redirect or update UI
     } catch (error) {
       console.error("Logout failed:", error);
     }
