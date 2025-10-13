@@ -27,6 +27,25 @@ export interface DeductCreditsResponse {
   deducted_amount?: number;
 }
 
+export interface ShippingDetails {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  streetAddress: string;
+  barangay: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+}
+
+export interface PlaceOrderParams {
+  userId: string;
+  shippingDetails: ShippingDetails;
+  creditId?: string;
+  customAuthentications?: number;
+}
+
 // Default packages configuration
 export const DEFAULT_PACKAGES: Package[] = [
   { id: "starter", name: "Starter Package", credits: 1000, price: 1000 },
@@ -53,9 +72,9 @@ export const formatCurrency = (amount: number): string => {
 export const getAuthenticationCount = (credits: number): number =>
   Math.floor(credits / 1000);
 
-// Get auth token from localStorage
+// Get auth token from memory (React state should be used instead)
 const getAuthToken = (): string | null => {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
     return localStorage.getItem("accessToken");
   }
   return null;
@@ -116,7 +135,7 @@ export const deductCredits = async (amount: number): Promise<boolean> => {
       },
       {
         headers: createAuthHeaders(),
-        withCredentials: true, // Add this if using Sanctum
+        withCredentials: true,
       }
     );
     return response.data.success;
@@ -152,6 +171,64 @@ export const createInvoice = async (
     throw new Error(response.data.message || "Failed to create invoice");
   } catch (error) {
     console.error("Error creating invoice:", error);
+
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        throw new Error(
+          error.response.data?.message ||
+            `Server error: ${error.response.status}`
+        );
+      } else if (error.request) {
+        throw new Error("Network error. Please check your connection.");
+      }
+    }
+    throw error;
+  }
+};
+
+/**
+ * Place an order with shipping details for credit top-up
+ */
+export const placeOrder = async (
+  params: PlaceOrderParams
+): Promise<TopUpResponse> => {
+  try {
+    const payload: any = {
+      user_id: params.userId,
+      shipping: {
+        full_name: params.shippingDetails.fullName,
+        email: params.shippingDetails.email,
+        phone: params.shippingDetails.phoneNumber,
+        street: params.shippingDetails.streetAddress,
+        barangay: params.shippingDetails.barangay,
+        city: params.shippingDetails.city,
+        province: params.shippingDetails.province,
+        postal_code: params.shippingDetails.postalCode,
+        country: params.shippingDetails.country,
+      },
+    };
+
+    // Add credit_id for package orders or custom_authentications for custom orders
+    if (params.creditId) {
+      payload.credit_id = params.creditId;
+    } else if (params.customAuthentications) {
+      payload.custom_authentications = params.customAuthentications;
+    }
+
+    const response = await axios.post<TopUpResponse>(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/top-up`,
+      payload,
+      {
+        headers: createAuthHeaders(),
+      }
+    );
+
+    if (response.data.success) {
+      return response.data;
+    }
+    throw new Error(response.data.message || "Payment processing failed");
+  } catch (error) {
+    console.error("Error placing order:", error);
 
     if (axios.isAxiosError(error)) {
       if (error.response) {
@@ -230,6 +307,10 @@ export class CreditService {
   async topUp(userId: string, packageData: Package): Promise<string> {
     const invoiceUrl = await createInvoice(userId, packageData);
     return invoiceUrl;
+  }
+
+  async placeOrder(params: PlaceOrderParams): Promise<TopUpResponse> {
+    return await placeOrder(params);
   }
 
   async refreshCredits(): Promise<number> {

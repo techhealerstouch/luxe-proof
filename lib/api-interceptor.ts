@@ -28,7 +28,7 @@ class ApiInterceptor {
     return Date.now() >= expiry - 60_000;
   }
 
-  async request(endpoint: string, options: RequestInit = {}) {
+  async request(endpoint: string, options: RequestInit = {}): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
 
     // Add authorization header if token exists

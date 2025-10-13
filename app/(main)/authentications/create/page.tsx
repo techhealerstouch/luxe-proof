@@ -338,9 +338,7 @@ export default function CreateAuthenticationPage() {
       await authenticatedWatchService.createAuthenticatedWatch(watchData);
       const deductResult = await deductCredits(creditValue);
       if (!deductResult) {
-        // Authentication was created but credit deduction failed
-        // You may want to handle this case specially
-        throw new Error(deductResult.message || "Failed to deduct credits");
+        toast.error("Please complete to required fields");
       }
 
       // 3. Refresh credits display
@@ -358,12 +356,7 @@ export default function CreateAuthenticationPage() {
       router.push("/authentications/intro");
     } catch (error) {
       console.error("Submission error:", error);
-
-      if (error.message?.includes("credit")) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to submit authentication");
-      }
+      toast.error("Failed to submit authentication");
     } finally {
       setIsSubmitting(false);
     }

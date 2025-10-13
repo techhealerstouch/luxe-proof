@@ -30,6 +30,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useCredits } from "@/hooks/use-credits";
 import { fetchPackages } from "@/lib/api-top-up";
 import axios from "axios";
+import { placeOrder } from "@/lib/credit-service";
 
 interface Package {
   id: string;
@@ -319,7 +320,6 @@ const TopUp: React.FC<TopUpProps> = ({
     setError(null);
     setCurrentStep("shipping");
   };
-
   const handlePlaceOrder = async () => {
     if (!user?.id) {
       setError("User not authenticated");
@@ -330,64 +330,45 @@ const TopUp: React.FC<TopUpProps> = ({
       return;
     }
 
+    // Validate that we have the required data based on active tab
+    if (activeTab === "packages" && !selectedPackageData) {
+      setError("Please select a package");
+      return;
+    }
+
+    if (activeTab === "custom" && !customAuthNumber) {
+      setError("Please enter number of authentications");
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
     try {
-      // Build the request payload to match backend expectations
-      const payload: any = {
-        user_id: user.id,
-        shipping: {
-          full_name: shippingDetails.fullName,
-          email: shippingDetails.email,
-          phone: shippingDetails.phoneNumber,
-          street: shippingDetails.streetAddress,
-          barangay: shippingDetails.barangay,
-          city: shippingDetails.city,
-          province: shippingDetails.province,
-          postal_code: shippingDetails.postalCode,
-          country: shippingDetails.country,
-        },
-      };
+      const response = await placeOrder({
+        userId: user.id,
+        shippingDetails: shippingDetails,
+        creditId:
+          activeTab === "packages" ? selectedPackageData?.id : undefined,
+        customAuthentications:
+          activeTab === "custom" ? parseInt(customAuthNumber) : undefined,
+      });
 
-      if (activeTab === "packages" && selectedPackageData) {
-        payload.credit_id = selectedPackageData.id;
-      } else if (activeTab === "custom") {
-        payload.custom_authentications = parseInt(customAuthNumber);
-      }
-
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/authenticator/top-up`,
-        payload,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
-      );
-
-      const data = await response?.data;
-
-      if (data.success && data.invoice_url) {
-        setInvoiceUrl(data.invoice_url);
+      if (response.success && response.invoice_url) {
+        setInvoiceUrl(response.invoice_url);
         setCurrentStep("success");
         setTimeout(() => {
           handleRedirectToInvoice();
         }, 2000);
       } else {
-        setError(data.message || "Payment processing failed");
+        setError(response.message || "Payment processing failed");
       }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Payment processing failed"
-      );
+    } catch (err: any) {
+      setError(err.message || "Payment processing failed");
     } finally {
       setIsProcessing(false);
     }
   };
-
   const handleRedirectToInvoice = () => {
     if (invoiceUrl) {
       setIsRedirecting(true);
@@ -438,7 +419,7 @@ const TopUp: React.FC<TopUpProps> = ({
       <Button
         variant={buttonVariant}
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 rounded-lg bg-black text-white font-semibold shadow-sm transition-all"
       >
         <Plus className="h-4 w-4" />
         {buttonText}

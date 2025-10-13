@@ -400,11 +400,6 @@ export function Step1Form({
                     </div>
                   )}
 
-                  <ExistingFileDisplay
-                    fieldName="warranty_card"
-                    field={field}
-                  />
-
                   <FormControl>
                     <FileInput
                       value={getFileInputValue()}
@@ -491,11 +486,6 @@ export function Step1Form({
                       </div>
                     </div>
                   )}
-
-                  <ExistingFileDisplay
-                    fieldName="purchase_receipt"
-                    field={field}
-                  />
 
                   <FormControl>
                     <FileInput
@@ -584,11 +574,6 @@ export function Step1Form({
                       </div>
                     </div>
                   )}
-
-                  <ExistingFileDisplay
-                    fieldName="service_records"
-                    field={field}
-                  />
 
                   <FormControl>
                     <FileInput

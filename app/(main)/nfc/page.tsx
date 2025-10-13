@@ -14,52 +14,17 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { getAuthenticityColor } from "@/utils/badges";
+import { PublicProfile } from "@/types/nfc/nfc";
 import {
   CheckCircle,
-  XCircle,
   Loader2,
   Eye,
   QrCode,
   X,
   SmartphoneNfc,
 } from "lucide-react";
-
-interface AuthenticatedProduct {
-  id: number;
-  name: string;
-  brand: string;
-  model: string;
-  verified_at: string;
-  account_id: number;
-  authenticity_verdict: string;
-  company_address: string | null;
-  company_name: string | null;
-  contact_method: string;
-  created_at: string;
-  date_of_sale: string;
-  email: string;
-  phone: string;
-  estimated_production_year: string;
-  final_summary: string;
-  status: string | null;
-  updated_at: string;
-  user_id: number;
-}
-
-interface PublicProfile {
-  ref_code: string;
-  product: AuthenticatedProduct;
-  verified_at: string;
-  status: string;
-}
-
-interface ApiResponse<T = any> {
-  success?: boolean;
-  valid?: boolean;
-  message: string;
-  data?: T;
-}
-
+import { viewPublicProfile } from "@/lib/api-nfc-service";
 export default function NfcPublicProfile() {
   const [refCode, setRefCode] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
@@ -76,9 +41,6 @@ export default function NfcPublicProfile() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Get auth token from localStorage
-  const authToken = localStorage?.getItem("accessToken") || "";
 
   const clearMessage = () => {
     setTimeout(() => setMessage(null), 5000);
@@ -151,11 +113,7 @@ export default function NfcPublicProfile() {
     }
   };
 
-  // Simple QR code detection (placeholder - in production use jsQR)
   const detectQrCode = (imageData: ImageData): string | null => {
-    // This is a simplified placeholder - in production you'd use jsQR library
-    // For demo purposes, this just returns null
-    // In real implementation: return jsQR(imageData.data, imageData.width, imageData.height)?.data || null;
     return null;
   };
 
@@ -165,32 +123,17 @@ export default function NfcPublicProfile() {
     };
   }, []);
 
-  const viewPublicProfile = async (code?: string) => {
+  const loadPublicProfile = async (code?: string) => {
     const codeToUse = code || refCode;
-
     if (!codeToUse.trim()) {
       setMessage({ type: "error", text: "Please enter a reference code" });
       clearMessage();
       return;
     }
-
     setProfileLoading(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/nfc/public-profile/${codeToUse}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      const result: ApiResponse<PublicProfile> = await response.json();
-
+      const result = await viewPublicProfile(codeToUse);
       if (result.valid && result.data) {
-        setPublicProfile(result.data);
         setMessage({
           type: "success",
           text: "Public profile loaded successfully",
@@ -207,22 +150,6 @@ export default function NfcPublicProfile() {
       clearMessage();
     }
   };
-
-  const getAuthenticityColor = (verdict: string) => {
-    switch (verdict?.toLowerCase()) {
-      case "Genuine":
-      case "Authentic":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "Genuine (Aftermarket)":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300";
-      case "counterfeit":
-      case "fake":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
-
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="mb-8">
@@ -329,7 +256,7 @@ export default function NfcPublicProfile() {
                 <QrCode className="h-4 w-4" />
               </Button>
               <Button
-                onClick={() => viewPublicProfile()}
+                onClick={() => loadPublicProfile()}
                 disabled={profileLoading}
               >
                 {profileLoading && (
@@ -383,14 +310,6 @@ export default function NfcPublicProfile() {
                       Product ID
                     </Label>
                     <p className="font-medium">{publicProfile.product.id}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground font-medium">
-                      Reference Number
-                    </Label>
-                    <p className="font-medium">
-                      {publicProfile.product.reference_number}
-                    </p>
                   </div>
                 </div>
               </div>

@@ -656,13 +656,13 @@ const TableActions: React.FC<TableActionsProps> = ({
   const isVoided = watchData.status === "voided";
 
   // Edit is allowed only within 3 days of creation and if not voided
-  const canEdit = !isVoided && isEditAllowedFor3Days(watchData.created_at);
+  const canEdit =
+    !isVoided && isEditAllowedFor3Days(watchData.created_at || "");
   const handleSendEmailCertificate = async () => {
     setEmailLoading(true);
-
     try {
       const token = localStorage.getItem("accessToken");
-      // Send to backend
+
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/authentications/${watchData.id}/send-certificate`,
         {
@@ -677,7 +677,6 @@ const TableActions: React.FC<TableActionsProps> = ({
         }
       );
       const result = await response.data;
-
       toast.success("Certificate Sent Successfully");
       setEmailDialogOpen(true);
     } catch (error) {
@@ -702,58 +701,11 @@ const TableActions: React.FC<TableActionsProps> = ({
     }
   };
 
-  const handleResend = async () => {
-    setResendLoading(true);
-    try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/authentications/${watchData.id}/resend`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to resend document");
-      }
-
-      toast({
-        title: "Document Resent",
-        description: `Authentication certificate for ${watchData.brand} ${
-          watchData.model || ""
-        } has been resent successfully.`,
-        variant: "default",
-      });
-
-      setResendDialogOpen(false);
-      window.location.reload();
-    } catch (error) {
-      console.error("Resend failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to resend document. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setResendLoading(false);
-    }
-  };
-
   const handleVoid = async () => {
     if (!voidReason.trim() || voidReason.trim().length < 10) {
-      toast({
-        title: "Invalid Reason",
-        description:
-          "Please provide a detailed reason (at least 10 characters) for voiding the process.",
-        variant: "destructive",
-      });
+      toast.error("Invalid Reason");
       return;
     }
-
     setVoidLoading(true);
     try {
       const token = localStorage.getItem("accessToken");
@@ -772,23 +724,14 @@ const TableActions: React.FC<TableActionsProps> = ({
       if (!response.ok) {
         throw new Error("Failed to void process");
       }
-
-      toast({
-        title: "Process Voided",
-        description: `Authentication process has been voided successfully.`,
-        variant: "default",
-      });
+      toast.success("Process Voided");
 
       setVoidReason("");
       setVoidDialogOpen(false);
       window.location.reload();
     } catch (error) {
       console.error("Void failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to void process. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Process Error");
     } finally {
       setVoidLoading(false);
     }
@@ -822,7 +765,7 @@ const TableActions: React.FC<TableActionsProps> = ({
             className="h-8 w-8 p-0 hover:bg-blue-50 border-blue-200"
             onClick={() => setEditModalOpen(true)}
             title={`Edit authentication (${getRemainingEditDays(
-              watchData.created_at
+              watchData.created_at || ""
             )} days left)`}
           >
             <Edit className="h-4 w-4 text-blue-600" />
@@ -841,20 +784,6 @@ const TableActions: React.FC<TableActionsProps> = ({
           </Button>
         )}
 
-        {/* Download PDF Button */}
-        {!isVoided && watchData.authenticity_verdict && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0 hover:bg-green-50 border-green-200"
-            onClick={() => onDownloadPDF(watchData)}
-            title="Download authentication certificate PDF"
-          >
-            <Download className="h-4 w-4 text-green-600" />
-            <span className="sr-only">Download PDF</span>
-          </Button>
-        )}
-        {/* Email Certificate Button - Replaces Download PDF */}
         {!isVoided && watchData.authenticity_verdict && (
           <Button
             variant="outline"
@@ -1578,10 +1507,10 @@ export const createTableColumns = ({
     cell: ({ row }) => {
       const isVoided = row.original.status === "voided";
       const createdAt = row.original.created_at;
-      const timeAgo = formatTimeAgo(createdAt);
+      const timeAgo = formatTimeAgo(createdAt || "");
 
-      const editAllowed = isEditAllowedFor3Days(createdAt);
-      const remainingDays = getRemainingEditDays(createdAt);
+      const editAllowed = isEditAllowedFor3Days(createdAt || "");
+      const remainingDays = getRemainingEditDays(createdAt || "");
 
       return (
         <div className={`text-sm ${isVoided ? "text-gray-400" : ""}`}>

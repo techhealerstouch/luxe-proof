@@ -5,64 +5,18 @@ import { useParams } from "next/navigation";
 import axios from "axios";
 import {
   CheckCircle2,
-  XCircle,
   Loader2,
   Package,
   Calendar,
   Shield,
   Info,
-  AlertTriangle,
 } from "lucide-react";
 import Logo from "@/components/logo";
-
-// Types
-interface AuthenticatedProduct {
-  id: number;
-  account_id?: number;
-  user_id?: number;
-  name: string;
-  brand?: string;
-  email?: string;
-  phone?: string;
-  contact_method?: string;
-  company_name?: string | null;
-  abn?: string | null;
-  company_address?: string | null;
-  reference_number?: string | null;
-  model?: string;
-  date_of_sale?: string;
-  authenticity_verdict?: string;
-  estimated_production_year?: string;
-  final_summary?: string;
-  status?: string;
-  created_at?: string;
-  updated_at?: string;
-  image_url?: string;
-  price?: number;
-  warranty?: string;
-  manufacturer_date?: string;
-  description?: string;
-  category?: string;
-  serial_number?: string;
-}
-
-interface NfcData {
-  ref_code: string;
-  product: AuthenticatedProduct;
-  verified_at: string;
-  status: string;
-}
-
-interface ApiResponse {
-  valid: boolean;
-  message?: string;
-  data?: NfcData;
-}
+import { AuthenticatedProduct, NfcData, ApiResponse } from "@/types/ref/ref";
 
 export default function VerifyNfcPage() {
   const params = useParams();
   const ref_code = params.ref_code as string;
-
   const [loading, setLoading] = useState(true);
   const [nfcData, setNfcData] = useState<NfcData | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -98,15 +52,6 @@ export default function VerifyNfcPage() {
       } catch (err: any) {
         setNotFound(true);
         // Better error handling
-        if (err.response?.status === 404) {
-          setError("Product not found in our system");
-        } else if (err.response?.status === 500) {
-          setError("Server error occurred");
-        } else if (err.code === "ERR_NETWORK") {
-          setError("Network error - please check your connection");
-        } else {
-          setError(err.response?.data?.message || "An error occurred");
-        }
       } finally {
         setLoading(false);
       }

@@ -9,18 +9,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { UseFormReturn } from "react-hook-form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { FileInput } from "../ui/file-input";
 import { Camera, FileText, X } from "lucide-react";
 import { useState } from "react";
@@ -59,43 +52,6 @@ export function Step7Form({
     return filePath.split("/").pop() || filePath;
   };
 
-  const ExistingFileDisplay = ({
-    fieldName,
-    field,
-  }: {
-    fieldName: string;
-    field: any;
-  }) => {
-    const existingPath = getExistingFilePath(fieldName);
-    const isRemoved = filesToRemove.includes(existingPath || "");
-
-    if (!existingPath || isRemoved) return null;
-
-    return (
-      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900">
-              Current file: {getFileName(existingPath)}
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleRemoveExistingFile(fieldName, existingPath)}
-            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <p className="text-xs text-blue-700 mt-1">
-          Upload a new file to replace this one, or click X to remove it.
-        </p>
-      </div>
-    );
-  };
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -131,7 +87,6 @@ export function Step7Form({
 
             return (
               <FormItem>
-                {/* Show existing file if it's a string path */}
                 {field.value && typeof field.value === "string" && (
                   <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex items-center gap-2 text-sm text-red-800">
@@ -140,11 +95,6 @@ export function Step7Form({
                     </div>
                   </div>
                 )}
-
-                <ExistingFileDisplay
-                  fieldName="watch_performance_tests_image_path"
-                  field={field}
-                />
 
                 <FormControl>
                   <FileInput
@@ -395,45 +345,81 @@ export function Step7Form({
           />
         </div>
 
+        {/* Chronograph Works */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
           <FormField
             name="chronograph_works"
-            render={({ field }) => {
-              console.log("Field value:", field.value);
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm font-semibold">
-                    Chronograph Works?
-                  </FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || "yes"}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-semibold">
+                  Chronograph Works?
+                </FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={(value) => {
+                      // Convert string values to the appropriate format
+                      if (value === "n/a") {
+                        field.onChange("n/a");
+                      } else {
+                        field.onChange(value === "true");
+                      }
+                    }}
+                    value={
+                      field.value === true
+                        ? "true"
+                        : field.value === false
+                        ? "false"
+                        : field.value === "n/a"
+                        ? "n/a"
+                        : ""
+                    }
+                    className="grid grid-cols-3 gap-3 mt-3"
                   >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an option" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="yes">Yes</SelectItem>
-                      <SelectItem value="no">No</SelectItem>
-                      <SelectItem value="n/a">N/A</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Current value:{" "}
-                    {field.value === "yes"
-                      ? "Yes"
-                      : field.value === "no"
-                      ? "No"
-                      : field.value === "n/a"
-                      ? "N/A"
-                      : "Yes (default)"}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
+                    <div className="flex items-center space-x-2 rounded-lg border border-gray-200 p-3 hover:bg-gray-50 transition-colors">
+                      <FormControl>
+                        <RadioGroupItem
+                          value="true"
+                          className="text-green-600"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal cursor-pointer flex-1">
+                        Yes
+                      </FormLabel>
+                    </div>
+                    <div className="flex items-center space-x-2 rounded-lg border border-gray-200 p-3 hover:bg-gray-50 transition-colors">
+                      <FormControl>
+                        <RadioGroupItem
+                          value="false"
+                          className="text-red-600"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal cursor-pointer flex-1">
+                        No
+                      </FormLabel>
+                    </div>
+                    <div className="flex items-center space-x-2 rounded-lg border border-gray-200 p-3 hover:bg-gray-50 transition-colors">
+                      <FormControl>
+                        <RadioGroupItem value="n/a" className="text-gray-600" />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal cursor-pointer flex-1">
+                        N/A
+                      </FormLabel>
+                    </div>
+                  </RadioGroup>
+                </FormControl>
+                <div className="text-xs text-gray-500 mt-1">
+                  Current value:
+                  {field.value === true
+                    ? " Yes"
+                    : field.value === false
+                    ? " No"
+                    : field.value === "n/a"
+                    ? " N/A"
+                    : " Not selected"}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
 

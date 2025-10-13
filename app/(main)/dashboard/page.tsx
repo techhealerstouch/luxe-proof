@@ -45,18 +45,19 @@ import {
   fetchCredits,
   getAuthenticationCount,
   CreditService,
-  type Package,
 } from "@/lib/credit-service"; // Adjust path as needed
 import {
   fetchDashboardStats,
   fetchRecentAuthentications,
   fetchTopBrands,
   fetchNfcTotal,
-  type DashboardStatsResponse,
   type AuthenticationItem,
   type TopBrand,
 } from "@/lib/api-dashboard";
-
+import {
+  getStatusBadgeTableAuthentication,
+  getAuthenticityBadge,
+} from "@/utils/badges";
 interface DashboardStats {
   totalAuthentications: number;
   pendingAuthentications: number;
@@ -145,68 +146,6 @@ export default function DashboardPage() {
     }
   };
 
-  const getStatusBadge = (auth: AuthenticationItem) => {
-    const status = auth.status;
-    const documentSent = auth.document_sent_at;
-
-    if (status === "voided") {
-      return (
-        <Badge className="bg-red-100 text-red-800 border-red-200">Voided</Badge>
-      );
-    }
-
-    if (documentSent || status === "sent") {
-      return (
-        <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-          Document Sent
-        </Badge>
-      );
-    }
-
-    if (status === "submitted") {
-      return (
-        <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-          Submitted
-        </Badge>
-      );
-    }
-
-    return (
-      <Badge className="bg-green-100 text-green-800 border-green-200">
-        Completed
-      </Badge>
-    );
-  };
-
-  // Get authenticity badge
-  const getAuthenticityBadge = (verdict?: string) => {
-    if (!verdict) {
-      return (
-        <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
-          Not Available
-        </Badge>
-      );
-    }
-
-    const isAuthentic =
-      verdict.toLowerCase().includes("authentic") ||
-      verdict.toLowerCase().includes("genuine");
-
-    return (
-      <Badge
-        className={
-          isAuthentic
-            ? "bg-green-500 hover:bg-green-600 text-white"
-            : "bg-red-500 hover:bg-red-600 text-white"
-        }
-      >
-        {verdict}
-      </Badge>
-    );
-  };
-
-  // Credits render functions
-
   // Fetch dashboard data
   const fetchDashboardData = async (showLoader = true) => {
     try {
@@ -268,7 +207,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Subscribe to credit changes
   useEffect(() => {
     const unsubscribe = creditService.subscribe((credits) => {
       setUserCredits(credits);
@@ -480,10 +418,6 @@ export default function DashboardPage() {
                         <Coins className="h-5 w-5 text-blue-600" />
                         {userCredits.toLocaleString()}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {authCapacity} authentication
-                        {authCapacity !== 1 ? "s" : ""} available
-                      </p>
                     </div>
                   )}
                 </div>
@@ -654,7 +588,9 @@ export default function DashboardPage() {
                                 getAuthenticityBadge(auth.authenticity_verdict)
                               )}
                             </TableCell>
-                            <TableCell>{getStatusBadge(auth)}</TableCell>
+                            <TableCell>
+                              {getStatusBadgeTableAuthentication(auth)}
+                            </TableCell>
                             <TableCell>
                               <div
                                 className={`text-sm ${

@@ -25,6 +25,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   Plus,
   Search,
   ChevronLeft,
@@ -32,10 +40,11 @@ import {
   Settings2,
   X,
   Loader2,
+  Filter,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/components/ui/use-toast";
-import { fetchCredits } from "@/lib/credit-service"; // Adjust path as needed
+import { fetchCredits } from "@/lib/credit-service";
 import type {
   ColumnFiltersState,
   SortingState,
@@ -64,7 +73,6 @@ import { useAuthenticationData } from "@/hooks/use-authentication-data";
 import { createTableColumns } from "@/components/authentications/table-columns";
 import { WatchViewModal } from "@/components/watch-details/watch-view-modal";
 import { generateAuthenticationPDF } from "@/utils/pdf-generator";
-// import { useUserDetails, useProvenanceAudit } from "@/hooks/useDetails";
 
 // Debounce hook
 function useDebounce<T>(value: T, delay = 300): T {
@@ -143,8 +151,8 @@ interface FilterBadgeProps {
 function FilterBadge({ label, value, onRemove }: FilterBadgeProps) {
   return (
     <Badge variant="secondary" className="gap-1 pr-1">
-      <span className="font-medium">{label}:</span>
-      <span>{value}</span>
+      <span className="font-medium text-xs sm:text-sm">{label}:</span>
+      <span className="text-xs sm:text-sm">{value}</span>
       <Button
         variant="ghost"
         size="sm"
@@ -167,12 +175,13 @@ export default function AuthenticationsPage() {
   const [selectedWatch, setSelectedWatch] =
     useState<WatchAuthentication | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Filter states
   const [brandFilter, setBrandFilter] = useState<string>("all");
   const [verdictFilter, setVerdictFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all"); // Added status filter
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Table state
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -192,23 +201,25 @@ export default function AuthenticationsPage() {
       fetchData();
     }
   }, [user, router]);
+
   useEffect(() => {
     if (user) {
       fetchCredits()
         .then((balance) => setCredits(balance))
         .catch((err) => {
           console.error("Failed to fetch credits:", err);
-          setCredits(0); // fallback
+          setCredits(0);
         });
     }
   }, [user]);
 
   if (!user) return null;
+
   useEffect(() => {
     setGlobalFilter(debouncedSearch);
   }, [debouncedSearch]);
 
-  // Apply filters with improved logic - Updated to include status filter
+  // Apply filters
   useEffect(() => {
     const filters: ColumnFiltersState = [];
 
@@ -234,13 +245,12 @@ export default function AuthenticationsPage() {
     setColumnFilters(filters);
   }, [brandFilter, verdictFilter, yearFilter, statusFilter]);
 
-  // Memoized filter options with better sorting - Updated to include status options
+  // Memoized filter options
   const filterOptions = useMemo(() => {
     if (!authentications || authentications.length === 0) {
       return { brands: [], verdicts: [], years: [], statuses: [] };
     }
 
-    // Extract brands and filter out null/undefined values
     const brands = Array.from(
       new Set(
         authentications
@@ -252,7 +262,6 @@ export default function AuthenticationsPage() {
       )
     ).sort((a, b) => String(a).localeCompare(String(b)));
 
-    // Extract verdicts and filter out null/undefined values
     const verdicts = Array.from(
       new Set(
         authentications
@@ -264,13 +273,11 @@ export default function AuthenticationsPage() {
       )
     ).sort((a, b) => String(a).localeCompare(String(b)));
 
-    // Extract years and filter out null/undefined/invalid values
     const years = Array.from(
       new Set(
         authentications
           .map((auth) => auth.estimated_production_year)
           .map((year) => {
-            // Convert string to number if needed
             if (typeof year === "string") {
               const parsed = parseInt(year, 10);
               return isNaN(parsed) ? null : parsed;
@@ -286,17 +293,15 @@ export default function AuthenticationsPage() {
               year > 0
           )
       )
-    ).sort((a, b) => b - a); // Sort years descending (newest first)
+    ).sort((a, b) => b - a);
 
-    // Extract statuses - Added status filtering
     const statuses = Array.from(
       new Set(
         authentications.map((auth) => {
-          // Determine status based on document_sent_at and status field
           if (auth.status === "voided") return "voided";
           if (auth.status === "completed") return "completed";
           if (auth.document_sent_at || auth.status === "sent") return "sent";
-          return "pendings";
+          return "pending";
         })
       )
     ).sort((a, b) => String(a).localeCompare(String(b)));
@@ -361,7 +366,7 @@ export default function AuthenticationsPage() {
     setBrandFilter("all");
     setVerdictFilter("all");
     setYearFilter("all");
-    setStatusFilter("all"); // Clear status filter
+    setStatusFilter("all");
     setSearch("");
   };
 
@@ -369,7 +374,7 @@ export default function AuthenticationsPage() {
     setSearch("");
   };
 
-  // Table configuration - Simplified and using the new table columns
+  // Table configuration
   const tableColumns = useMemo(
     () =>
       createTableColumns({
@@ -406,7 +411,6 @@ export default function AuthenticationsPage() {
     },
   });
 
-  // Updated active filters count to include status filter
   const activeFiltersCount = useMemo(() => {
     return (
       [brandFilter, verdictFilter, yearFilter, statusFilter].filter(
@@ -415,41 +419,134 @@ export default function AuthenticationsPage() {
     );
   }, [brandFilter, verdictFilter, yearFilter, statusFilter, search]);
 
-  // Early return for unauthenticated users
   if (!user) return null;
+
+  // Filter controls component for reuse
+  const FilterControls = () => (
+    <div className="space-y-4">
+      {/* Brand Filter */}
+      <div>
+        <label className="text-sm font-medium mb-2 block">Brand</label>
+        <Select value={brandFilter} onValueChange={setBrandFilter}>
+          <SelectTrigger className="w-full border-2 focus:border-primary">
+            <SelectValue placeholder="All Brands" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Brands</SelectItem>
+            {filterOptions.brands.map((brand) => (
+              <SelectItem key={brand} value={brand}>
+                {brand}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Verdict Filter */}
+      <div>
+        <label className="text-sm font-medium mb-2 block">Verdict</label>
+        <Select value={verdictFilter} onValueChange={setVerdictFilter}>
+          <SelectTrigger className="w-full border-2 focus:border-primary">
+            <SelectValue placeholder="All Verdicts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Verdicts</SelectItem>
+            {filterOptions.verdicts.map((verdict) => (
+              <SelectItem key={verdict} value={verdict}>
+                {verdict}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Year Filter */}
+      <div>
+        <label className="text-sm font-medium mb-2 block">Year</label>
+        <Select value={yearFilter} onValueChange={setYearFilter}>
+          <SelectTrigger className="w-full border-2 focus:border-primary">
+            <SelectValue placeholder="All Years" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {filterOptions.years.map((year) => (
+              <SelectItem key={year} value={String(year)}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Status Filter */}
+      <div>
+        <label className="text-sm font-medium mb-2 block">Status</label>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full border-2 focus:border-primary">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="sent">Document Sent</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="voided">Voided</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Clear Filters Button for Mobile */}
+      {activeFiltersCount > 0 && (
+        <Button
+          variant="outline"
+          onClick={clearFilters}
+          className="w-full border-2 border-destructive/20 text-destructive hover:bg-destructive/10"
+        >
+          Clear All Filters
+          <Badge
+            variant="destructive"
+            className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+          >
+            {activeFiltersCount}
+          </Badge>
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <DashboardLayout>
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Authentication Records
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Manage and track your watch authentication records
           </p>
         </div>
         <Button
           size="default"
-          className="shrink-0"
+          className="shrink-0 w-full sm:w-auto"
           onClick={() => router.push("/authentications/intro")}
           disabled={credits === null || credits <= 0}
         >
-          <Plus className="h-4 w-4" />
-          New Authentications
+          <Plus className="h-4 w-4 mr-2" />
+          New Authentication
         </Button>
       </div>
 
       {/* Search and Filters */}
       <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
+        <CardContent className="p-4 sm:p-6">
+          {/* Mobile Layout */}
+          <div className="lg:hidden space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
               <Input
-                placeholder="Search by name, brand, serial number..."
+                placeholder="Search records..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 pr-10 border-2 focus:border-primary transition-colors"
@@ -466,71 +563,44 @@ export default function AuthenticationsPage() {
               )}
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2 flex-wrap">
-              {/* Brand Filter */}
-              <Select value={brandFilter} onValueChange={setBrandFilter}>
-                <SelectTrigger className="w-[140px] border-2 focus:border-primary">
-                  <SelectValue placeholder="All Brands" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Brands</SelectItem>
-                  {filterOptions.brands.map((brand) => (
-                    <SelectItem key={brand} value={brand}>
-                      {brand}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Mobile Filter and Column Controls */}
+            <div className="flex gap-2">
+              {/* Filter Sheet for Mobile */}
+              <Sheet
+                open={isMobileFilterOpen}
+                onOpenChange={setIsMobileFilterOpen}
+              >
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="flex-1 border-2">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
+                    {activeFiltersCount > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-2 h-5 px-1.5 text-xs"
+                      >
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[280px] sm:w-[350px]">
+                  <SheetHeader>
+                    <SheetTitle>Filters</SheetTitle>
+                    <SheetDescription>
+                      Filter your authentication records
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <FilterControls />
+                  </div>
+                </SheetContent>
+              </Sheet>
 
-              {/* Verdict Filter */}
-              <Select value={verdictFilter} onValueChange={setVerdictFilter}>
-                <SelectTrigger className="w-[140px] border-2 focus:border-primary">
-                  <SelectValue placeholder="All Verdicts" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Verdicts</SelectItem>
-                  {filterOptions.verdicts.map((verdict) => (
-                    <SelectItem key={verdict} value={verdict}>
-                      {verdict}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Year Filter */}
-              <Select value={yearFilter} onValueChange={setYearFilter}>
-                <SelectTrigger className="w-[120px] border-2 focus:border-primary">
-                  <SelectValue placeholder="All Years" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {filterOptions.years.map((year) => (
-                    <SelectItem key={year} value={String(year)}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Status Filter - Added this filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] border-2 focus:border-primary">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="sent">Document Sent</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="voided">Voided</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Column Visibility */}
+              {/* Column Visibility Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-2">
+                  <Button variant="outline" className="flex-1 border-2">
                     <Settings2 className="mr-2 h-4 w-4" />
                     Columns
                   </Button>
@@ -561,31 +631,154 @@ export default function AuthenticationsPage() {
                     })}
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              {/* Clear Filters */}
-              {activeFiltersCount > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={clearFilters}
-                  className="border-2 border-destructive/20 text-destructive hover:bg-destructive/10"
-                >
-                  Clear Filters
-                  <Badge
-                    variant="destructive"
-                    className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-                  >
-                    {activeFiltersCount}
-                  </Badge>
-                </Button>
-              )}
             </div>
           </div>
 
-          {/* Active Filters Display - Updated to include status filter */}
+          {/* Desktop Layout */}
+          <div className="hidden lg:block space-y-4">
+            <div className="flex gap-4">
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
+                <Input
+                  placeholder="Search by name, brand, serial number..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10 pr-10 border-2 focus:border-primary transition-colors"
+                />
+                {search && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                    onClick={clearSearch}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Desktop Filters */}
+              <div className="flex gap-2 flex-wrap">
+                {/* Brand Filter */}
+                <Select value={brandFilter} onValueChange={setBrandFilter}>
+                  <SelectTrigger className="w-[140px] border-2 focus:border-primary">
+                    <SelectValue placeholder="All Brands" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Brands</SelectItem>
+                    {filterOptions.brands.map((brand) => (
+                      <SelectItem key={brand} value={brand}>
+                        {brand}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Verdict Filter */}
+                <Select value={verdictFilter} onValueChange={setVerdictFilter}>
+                  <SelectTrigger className="w-[140px] border-2 focus:border-primary">
+                    <SelectValue placeholder="All Verdicts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Verdicts</SelectItem>
+                    {filterOptions.verdicts.map((verdict) => (
+                      <SelectItem key={verdict} value={verdict}>
+                        {verdict}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Year Filter */}
+                <Select value={yearFilter} onValueChange={setYearFilter}>
+                  <SelectTrigger className="w-[120px] border-2 focus:border-primary">
+                    <SelectValue placeholder="All Years" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Years</SelectItem>
+                    {filterOptions.years.map((year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Status Filter */}
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[140px] border-2 focus:border-primary">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="sent">Document Sent</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="voided">Voided</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Column Visibility */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="border-2">
+                      <Settings2 className="mr-2 h-4 w-4" />
+                      Columns
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[200px]">
+                    <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {table
+                      .getAllColumns()
+                      .filter(
+                        (column) =>
+                          typeof column.accessorFn !== "undefined" &&
+                          column.getCanHide()
+                      )
+                      .map((column) => {
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={column.id}
+                            className="capitalize"
+                            checked={column.getIsVisible()}
+                            onCheckedChange={(value) =>
+                              column.toggleVisibility(!!value)
+                            }
+                          >
+                            {column.id.replace(/_/g, " ")}
+                          </DropdownMenuCheckboxItem>
+                        );
+                      })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Clear Filters */}
+                {activeFiltersCount > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={clearFilters}
+                    className="border-2 border-destructive/20 text-destructive hover:bg-destructive/10"
+                  >
+                    Clear Filters
+                    <Badge
+                      variant="destructive"
+                      className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                    >
+                      {activeFiltersCount}
+                    </Badge>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
-              <span className="text-sm font-medium text-muted-foreground">
-                Active Filters:
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+                Active:
               </span>
               {search && (
                 <FilterBadge
@@ -633,8 +826,8 @@ export default function AuthenticationsPage() {
       {error && (
         <Card className="mb-6 border-destructive bg-destructive/5">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-1">
                 <h3 className="font-semibold text-destructive mb-1">
                   Error Loading Data
                 </h3>
@@ -644,7 +837,7 @@ export default function AuthenticationsPage() {
                 variant="outline"
                 onClick={fetchData}
                 disabled={isLoading}
-                className="border-destructive text-destructive hover:bg-destructive/10"
+                className="w-full sm:w-auto border-destructive text-destructive hover:bg-destructive/10"
               >
                 {isLoading ? (
                   <>
@@ -663,94 +856,100 @@ export default function AuthenticationsPage() {
       {/* Loading State */}
       {isLoading && <LoadingState />}
 
-      {/* Data Table */}
+      {/* Data Table - with horizontal scroll on mobile */}
       {!isLoading && !error && (
         <Card>
           <CardContent className="p-0">
             {authentications.length > 0 ? (
               <>
-                <div className="rounded-md border-0 overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow
-                          key={headerGroup.id}
-                          className="border-b bg-muted/50"
-                        >
-                          {headerGroup.headers.map((header) => (
-                            <TableHead
-                              key={header.id}
-                              className="font-semibold"
-                            >
-                              {header.isPlaceholder
-                                ? null
-                                : flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
-                                  )}
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableHeader>
-                    <TableBody>
-                      {table.getRowModel().rows?.length ? (
-                        table.getRowModel().rows.map((row) => (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[800px]">
+                    <Table>
+                      <TableHeader>
+                        {table.getHeaderGroups().map((headerGroup) => (
                           <TableRow
-                            key={row.id}
-                            data-state={row.getIsSelected() && "selected"}
-                            className="hover:bg-muted/30 transition-colors"
+                            key={headerGroup.id}
+                            className="border-b bg-muted/50"
                           >
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell key={cell.id}>
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext()
-                                )}
-                              </TableCell>
+                            {headerGroup.headers.map((header) => (
+                              <TableHead
+                                key={header.id}
+                                className="font-semibold whitespace-nowrap"
+                              >
+                                {header.isPlaceholder
+                                  ? null
+                                  : flexRender(
+                                      header.column.columnDef.header,
+                                      header.getContext()
+                                    )}
+                              </TableHead>
                             ))}
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell
-                            colSpan={tableColumns.length}
-                            className="h-24 text-center text-muted-foreground"
-                          >
-                            {activeFiltersCount > 0 ? (
-                              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                                <div className="rounded-full bg-muted p-3 mb-4">
-                                  <Search className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                                <h3 className="text-lg font-semibold mb-2">
-                                  No results found
-                                </h3>
-                                <p className="text-muted-foreground mb-6 max-w-md">
-                                  No authentication records match your current
-                                  filters. Try adjusting your search criteria or
-                                  clearing some filters.
-                                </p>
-                                <Button
-                                  variant="outline"
-                                  onClick={clearFilters}
+                        ))}
+                      </TableHeader>
+                      <TableBody>
+                        {table.getRowModel().rows?.length ? (
+                          table.getRowModel().rows.map((row) => (
+                            <TableRow
+                              key={row.id}
+                              data-state={row.getIsSelected() && "selected"}
+                              className="hover:bg-muted/30 transition-colors"
+                            >
+                              {row.getVisibleCells().map((cell) => (
+                                <TableCell
+                                  key={cell.id}
+                                  className="whitespace-nowrap"
                                 >
-                                  <X className="mr-2 h-4 w-4" />
-                                  Clear All Filters
-                                </Button>
-                              </div>
-                            ) : (
-                              "No results found for your current filters."
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell
+                              colSpan={tableColumns.length}
+                              className="h-24 text-center text-muted-foreground"
+                            >
+                              {activeFiltersCount > 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6 text-center">
+                                  <div className="rounded-full bg-muted p-3 mb-4">
+                                    <Search className="h-6 w-6 text-muted-foreground" />
+                                  </div>
+                                  <h3 className="text-base sm:text-lg font-semibold mb-2">
+                                    No results found
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground mb-6 max-w-md">
+                                    No authentication records match your current
+                                    filters. Try adjusting your search criteria
+                                    or clearing some filters.
+                                  </p>
+                                  <Button
+                                    variant="outline"
+                                    onClick={clearFilters}
+                                    className="w-full sm:w-auto"
+                                  >
+                                    <X className="mr-2 h-4 w-4" />
+                                    Clear All Filters
+                                  </Button>
+                                </div>
+                              ) : (
+                                "No results found for your current filters."
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
 
-                {/* Simple Pagination */}
-                <div className="flex items-center justify-between p-4 border-t">
-                  <div className="flex-1 text-sm text-muted-foreground">
+                {/* Pagination - Responsive */}
+                <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t gap-4">
+                  <div className="text-sm text-muted-foreground order-2 sm:order-1">
                     {table.getFilteredSelectedRowModel().rows.length > 0 && (
                       <>
                         {table.getFilteredSelectedRowModel().rows.length} of{" "}
@@ -759,7 +958,7 @@ export default function AuthenticationsPage() {
                       </>
                     )}
                   </div>
-                  <div className="flex items-center space-x-6 lg:space-x-8">
+                  <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 lg:gap-8 order-1 sm:order-2">
                     <div className="flex items-center space-x-2">
                       <p className="text-sm font-medium">Rows per page</p>
                       <Select
@@ -780,58 +979,60 @@ export default function AuthenticationsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                      Page {table.getState().pagination.pageIndex + 1} of{" "}
-                      {table.getPageCount()}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() => table.setPageIndex(0)}
-                        disabled={!table.getCanPreviousPage()}
-                      >
-                        <span className="sr-only">Go to first page</span>
-                        <ChevronLeft className="h-4 w-4" />
-                        <ChevronLeft className="h-4 w-4 -ml-2" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                      >
-                        <span className="sr-only">Go to previous page</span>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                      >
-                        <span className="sr-only">Go to next page</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() =>
-                          table.setPageIndex(table.getPageCount() - 1)
-                        }
-                        disabled={!table.getCanNextPage()}
-                      >
-                        <span className="sr-only">Go to last page</span>
-                        <ChevronRight className="h-4 w-4" />
-                        <ChevronRight className="h-4 w-4 -ml-2" />
-                      </Button>
+                    <div className="flex items-center gap-2 sm:gap-4">
+                      <div className="text-sm font-medium">
+                        Page {table.getState().pagination.pageIndex + 1} of{" "}
+                        {table.getPageCount()}
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => table.setPageIndex(0)}
+                          disabled={!table.getCanPreviousPage()}
+                        >
+                          <span className="sr-only">Go to first page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-4 w-4 -ml-2" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => table.previousPage()}
+                          disabled={!table.getCanPreviousPage()}
+                        >
+                          <span className="sr-only">Go to previous page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => table.nextPage()}
+                          disabled={!table.getCanNextPage()}
+                        >
+                          <span className="sr-only">Go to next page</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() =>
+                            table.setPageIndex(table.getPageCount() - 1)
+                          }
+                          disabled={!table.getCanNextPage()}
+                        >
+                          <span className="sr-only">Go to last page</span>
+                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-4 w-4 -ml-2" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Results Summary */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground p-4 border-t bg-muted/10">
-                  <div>
+                {/* Results Summary - Responsive */}
+                <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground p-4 border-t bg-muted/10 gap-2">
+                  <div className="text-center sm:text-left">
                     Showing {table.getRowModel().rows.length} of{" "}
                     {table.getFilteredRowModel().rows.length} entries
                     {table.getFilteredRowModel().rows.length !==
@@ -839,7 +1040,7 @@ export default function AuthenticationsPage() {
                       ` (filtered from ${authentications.length} total)`}
                   </div>
                   {table.getFilteredSelectedRowModel().rows.length > 0 && (
-                    <div>
+                    <div className="text-center sm:text-right">
                       {table.getFilteredSelectedRowModel().rows.length} of{" "}
                       {table.getFilteredRowModel().rows.length} row(s) selected
                     </div>
@@ -848,18 +1049,26 @@ export default function AuthenticationsPage() {
               </>
             ) : (
               /* Empty State */
-              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+              <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6 text-center">
                 <div className="rounded-full bg-muted p-3 mb-4">
                   <Plus className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="text-base sm:text-lg font-semibold mb-2">
                   No authentications found
                 </h3>
-                <p className="text-muted-foreground mb-6 max-w-md">
+                <p className="text-sm text-muted-foreground mb-6 max-w-md">
                   Get started by creating your first watch authentication
                   record. Track and manage all your authentication certificates
                   in one place.
                 </p>
+                <Button
+                  onClick={() => router.push("/authentications/intro")}
+                  className="w-full sm:w-auto"
+                  disabled={credits === null || credits <= 0}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Authentication
+                </Button>
               </div>
             )}
           </CardContent>

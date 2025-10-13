@@ -27,6 +27,7 @@ import {
   Mail,
   FileText,
   ExternalLink,
+  ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -144,6 +145,12 @@ export default function TopNavigation({
               <Link href="/billing">
                 <CircleDollarSign className="mr-2 h-4 w-4" />
                 Billing
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/order-tracking">
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                Orders
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
