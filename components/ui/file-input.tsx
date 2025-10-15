@@ -2,20 +2,20 @@
 
 import { cn } from "@/lib/utils";
 import {
-  FileIcon,
   Trash2,
   Upload,
-  Image,
+  Image as ImageIcon,
   FileText,
   AlertCircle,
   CheckCircle2,
   X,
   Loader2,
+  Camera,
+  FolderOpen,
 } from "lucide-react";
-import * as React from "react";
-import { Button } from "./button";
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import imageCompression from "browser-image-compression";
 
 interface FileInputProps {
   className?: string;
@@ -23,31 +23,32 @@ interface FileInputProps {
   onChange?: (files: File[]) => void;
   disabled?: boolean;
   accept?: string;
-  maxSize?: number; // in MB
+  maxSize?: number;
   maxFiles?: number;
+  allowCamera?: boolean;
 }
 
-const FileInput = ({
+export function FileInput({
   className,
   value = [],
   onChange,
   disabled,
   accept = "image/*,.pdf",
-  maxSize = 0.5, // 500KB default
+  maxSize = 0.9,
   maxFiles = 10,
-}: FileInputProps) => {
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [uploadProgress, setUploadProgress] = React.useState<{
+  allowCamera = true,
+}: FileInputProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
     [key: string]: number;
   }>({});
-  const [uploadingFiles, setUploadingFiles] = React.useState<Set<string>>(
+  const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
+  const [compressingFiles, setCompressingFiles] = useState<Set<string>>(
     new Set()
   );
-  const [compressingFiles, setCompressingFiles] = React.useState<Set<string>>(
-    new Set()
-  );
-  const [errors, setErrors] = React.useState<string[]>([]);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [errors, setErrors] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const isSingleFile = maxFiles === 1;
 
@@ -62,35 +63,103 @@ const FileInput = ({
     });
   };
 
-  // Compress image using browser-image-compression
   const compressImage = async (file: File): Promise<File> => {
-    const options = {
-      maxSizeMB: 0.7, // Target 700KB
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-      initialQuality: 0.8,
-      onProgress: (progress: number) => {
-        console.log(`Compressing ${file.name}: ${progress}%`);
-      },
-    };
+    const targetSizeKB = maxSize * 1024;
+    const fileSizeMB = file.size / 1024 / 1024;
 
-    try {
-      const compressedFile = await imageCompression(file, options);
-      console.log(
-        `Compressed ${file.name} from ${formatFileSize(
-          file.size
-        )} to ${formatFileSize(compressedFile.size)}`
-      );
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-      // Preserve original filename
-      return new File([compressedFile], file.name, {
-        type: compressedFile.type,
-        lastModified: Date.now(),
-      });
-    } catch (error) {
-      console.error("Compression error:", error);
-      throw error;
-    }
+      reader.onload = (e) => {
+        const img = document.createElement("img");
+
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            reject(new Error("Failed to get canvas context"));
+            return;
+          }
+
+          let maxWidth = 1920;
+          let maxHeight = 1920;
+
+          if (fileSizeMB > 10) {
+            maxWidth = 1280;
+            maxHeight = 1280;
+          } else if (fileSizeMB > 5) {
+            maxWidth = 1600;
+            maxHeight = 1600;
+          }
+
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = (height / width) * maxWidth;
+              width = maxWidth;
+            } else {
+              width = (width / height) * maxHeight;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let quality = fileSizeMB > 10 ? 0.6 : fileSizeMB > 5 ? 0.7 : 0.8;
+          let attempts = 0;
+          const maxAttempts = 5;
+
+          const tryCompress = () => {
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(new Error("Compression failed"));
+                  return;
+                }
+
+                if (
+                  blob.size <= targetSizeKB * 1024 ||
+                  attempts >= maxAttempts ||
+                  quality <= 0.3
+                ) {
+                  const originalName = file.name;
+                  const nameWithoutExt =
+                    originalName.substring(0, originalName.lastIndexOf(".")) ||
+                    originalName;
+                  const finalName = `${nameWithoutExt}.jpg`;
+
+                  const compressedFile = new File([blob], finalName, {
+                    type: "image/jpeg",
+                    lastModified: Date.now(),
+                  });
+
+                  resolve(compressedFile);
+                } else {
+                  attempts++;
+                  quality = Math.max(0.3, quality * 0.8);
+                  tryCompress();
+                }
+              },
+              "image/jpeg",
+              quality
+            );
+          };
+
+          tryCompress();
+        };
+
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = e.target?.result as string;
+      };
+
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
   };
 
   const getFileIcon = (file: File) => {
@@ -98,13 +167,14 @@ const FileInput = ({
     const fileName = file?.name || "";
 
     if (fileType.startsWith("image/")) {
-      return <Image className="h-4 w-4 text-blue-500" />;
-    } else if (fileType === "application/pdf") {
-      return <FileText className="h-4 w-4 text-red-500" />;
-    } else if (fileName.toLowerCase().includes(".pdf")) {
+      return <ImageIcon className="h-4 w-4 text-blue-500" />;
+    } else if (
+      fileType === "application/pdf" ||
+      fileName.toLowerCase().includes(".pdf")
+    ) {
       return <FileText className="h-4 w-4 text-red-500" />;
     } else if (fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      return <Image className="h-4 w-4 text-blue-500" />;
+      return <ImageIcon className="h-4 w-4 text-blue-500" />;
     } else {
       return <FileText className="h-4 w-4 text-gray-500" />;
     }
@@ -123,14 +193,13 @@ const FileInput = ({
   ): Promise<{ validFiles: File[]; errors: string[] }> => {
     const validFiles: File[] = [];
     const newErrors: string[] = [];
-    const maxOriginalSize = 1 * 1024 * 1024; // 1MB - reject files larger than this
-    const maxCompressedSize = 0.7 * 1024 * 1024; // 700KB - target compression size
+    const maxOriginalSize = 50 * 1024 * 1024;
+    const maxCompressedSize = maxSize * 1024 * 1024;
 
     for (const file of files) {
       const fileKey = `${file.name}-${Date.now()}`;
       let processedFile = file;
 
-      // Check file type first
       const acceptedTypes = accept.split(",").map((type) => type.trim());
       const isValidType = acceptedTypes.some((acceptedType) => {
         if (acceptedType.startsWith(".")) {
@@ -148,18 +217,16 @@ const FileInput = ({
         continue;
       }
 
-      // Reject files 1MB and above
       if (file.size >= maxOriginalSize) {
         newErrors.push(
           `${file.name} is too large (${formatFileSize(
             file.size
-          )}). Maximum file size is 1MB`
+          )}). The Maximum original file size is 50MB`
         );
         continue;
       }
 
-      // Check if it's an image and needs compression (compress if over 700KB)
-      if (file.type.startsWith("image/") && file.size > maxCompressedSize) {
+      if (file.type.startsWith("image/")) {
         try {
           setCompressingFiles((prev) => new Set(prev).add(fileKey));
           processedFile = await compressImage(file);
@@ -177,30 +244,24 @@ const FileInput = ({
           newErrors.push(`Failed to compress ${file.name}`);
           continue;
         }
-      }
-
-      // Check file size after compression (must be under 700KB)
-      if (processedFile.size > maxCompressedSize) {
+      } else if (file.size > maxCompressedSize) {
         newErrors.push(
-          `${file.name} is too large after compression (${formatFileSize(
-            processedFile.size
-          )}). Must be under 700KB`
+          `${file.name} is too large (${formatFileSize(
+            file.size
+          )}). Must be under ${formatFileSize(maxCompressedSize)}`
         );
         continue;
       }
 
-      // Rename file to remove spaces
       const sanitizedName = sanitizeFileName(processedFile.name);
       const renamedFile = renameFile(processedFile, sanitizedName);
       validFiles.push(renamedFile);
     }
 
-    // For single file mode, replace existing file
     if (isSingleFile && validFiles.length > 0) {
       return { validFiles: [validFiles[0]], errors: newErrors };
     }
 
-    // Check total file count for multiple file mode
     if (value.length + validFiles.length > maxFiles) {
       newErrors.push(`Maximum ${maxFiles} files allowed`);
       return {
@@ -245,29 +306,19 @@ const FileInput = ({
 
   const handleFiles = async (files: FileList | File[]) => {
     const filesArray = Array.from(files);
-
-    // First, validate and compress files (don't upload yet)
     const { validFiles, errors: validationErrors } =
       await validateAndCompressFiles(filesArray);
 
     setErrors(validationErrors);
 
-    // Only after compression is complete, start the upload process
     if (validFiles.length > 0) {
       if (isSingleFile) {
         const file = validFiles[0];
         const fileKey = `${file.name}-${Date.now()}`;
-
-        // Update files first
         onChange?.(validFiles);
-
-        // Then simulate upload
         simulateUpload(file, fileKey);
       } else {
-        // Update files first
         onChange?.([...(value || []), ...validFiles]);
-
-        // Then simulate upload for each
         validFiles.forEach((file, index) => {
           const fileKey = `${file.name}-${Date.now()}-${index}`;
           simulateUpload(file, fileKey);
@@ -275,13 +326,9 @@ const FileInput = ({
       }
     }
 
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-
-    if (validationErrors.length > 0) {
-      setTimeout(() => setErrors([]), 5000);
-    }
+    if (inputRef.current) inputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (validationErrors.length > 0) setTimeout(() => setErrors([]), 5000);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -294,7 +341,6 @@ const FileInput = ({
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
-
     if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
       setIsDragging(false);
     }
@@ -309,9 +355,7 @@ const FileInput = ({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && !disabled) {
-      handleFiles(e.target.files);
-    }
+    if (e.target.files && !disabled) handleFiles(e.target.files);
   };
 
   const handleRemove = (index: number) => {
@@ -333,106 +377,136 @@ const FileInput = ({
   };
 
   const isCompressing = compressingFiles.size > 0;
+  const isImageAccepted = accept.includes("image");
 
   return (
     <div className={cn("space-y-4", className)}>
       {(value.length === 0 || !isSingleFile) && (
-        <div
-          onClick={() =>
-            !disabled && !isCompressing && inputRef.current?.click()
-          }
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={cn(
-            "relative cursor-pointer rounded-lg border-2 border-dashed px-6 py-8 text-center transition-all duration-200",
-            isDragging
-              ? "border-blue-400 bg-blue-50 scale-105 shadow-lg"
-              : "border-gray-300 hover:border-gray-400 hover:bg-gray-50",
-            (disabled || isCompressing) &&
-              "cursor-not-allowed opacity-60 hover:border-gray-300 hover:bg-transparent"
-          )}
-          role="button"
-          tabIndex={0}
-          aria-disabled={disabled || isCompressing}
-          aria-label={`Upload ${
-            isSingleFile ? "file" : "files"
-          }. Accepted formats: ${accept}. Max size: ${maxSize}MB per file.`}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept={accept}
-            multiple={!isSingleFile}
-            disabled={disabled || isCompressing}
-            onChange={handleChange}
-            className="hidden"
-            aria-describedby="file-upload-description"
-          />
+        <>
+          <div
+            onClick={() =>
+              !disabled && !isCompressing && inputRef.current?.click()
+            }
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={cn(
+              "relative cursor-pointer rounded-lg border-2 border-dashed px-6 py-8 text-center transition-all duration-200",
+              isDragging
+                ? "border-blue-400 bg-blue-50 scale-105 shadow-lg"
+                : "border-gray-300 hover:border-gray-400 hover:bg-gray-50",
+              (disabled || isCompressing) && "cursor-not-allowed opacity-60"
+            )}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept={accept}
+              multiple={!isSingleFile}
+              disabled={disabled || isCompressing}
+              onChange={handleChange}
+              className="hidden"
+            />
 
-          <div className="flex flex-col items-center gap-3">
-            <div
-              className={cn(
-                "rounded-full p-3 transition-colors",
-                isDragging ? "bg-blue-100" : "bg-gray-100"
-              )}
-            >
-              {isCompressing ? (
-                <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-              ) : (
-                <Upload
-                  className={cn(
-                    "h-8 w-8 transition-colors",
-                    isDragging ? "text-blue-600" : "text-gray-400"
-                  )}
-                />
-              )}
-            </div>
-
-            <div className="space-y-1">
-              {isCompressing ? (
-                <p className="text-sm font-medium text-blue-600">
-                  Compressing images...
-                </p>
-              ) : (
-                <>
-                  <p className="text-sm font-medium">
-                    <span className="text-blue-600 hover:text-blue-800 transition-colors">
-                      Click to upload
-                    </span>
-                    <span className="text-gray-500"> or drag and drop</span>
-                  </p>
-                  <p
-                    id="file-upload-description"
-                    className="text-xs text-gray-400"
-                  >
-                    {accept.includes("image") && "Images"}
-                    {accept.includes("image") &&
-                      accept.includes(".pdf") &&
-                      " & "}
-                    {accept.includes(".pdf") && "PDF"}
-                    {isSingleFile
-                      ? ` up to ${maxSize}MB`
-                      : ` up to ${maxSize}MB each (max ${maxFiles} files)`}
-                    {accept.includes("image") && (
-                      <span className="block text-gray-400 mt-1">
-                        Large images will be auto-compressed
-                      </span>
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className={cn(
+                  "rounded-full p-3",
+                  isDragging ? "bg-blue-100" : "bg-gray-100"
+                )}
+              >
+                {isCompressing ? (
+                  <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                ) : (
+                  <Upload
+                    className={cn(
+                      "h-8 w-8",
+                      isDragging ? "text-blue-600" : "text-gray-400"
                     )}
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
+                  />
+                )}
+              </div>
 
-          {isDragging && !isCompressing && (
-            <div className="absolute inset-0 bg-blue-100 bg-opacity-50 rounded-lg flex items-center justify-center">
-              <div className="text-blue-600 font-medium">
-                Drop {isSingleFile ? "file" : "files"} here
+              <div className="space-y-1">
+                {isCompressing ? (
+                  <p className="text-sm font-medium text-blue-600">
+                    Compressing image...
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium">
+                      <span className="text-blue-600 hover:text-blue-800">
+                        Click to upload
+                      </span>
+                      <span className="text-gray-500"> or drag and drop</span>
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {accept.includes("image") && "Images"}
+                      {accept.includes("image") &&
+                        accept.includes(".pdf") &&
+                        " & "}
+                      {accept.includes(".pdf") && "PDF"}
+                      {isSingleFile
+                        ? ` up to ${maxSize}MB`
+                        : ` up to ${maxSize}MB each (max ${maxFiles})`}
+                      {accept.includes("image") && (
+                        <span className="block mt-1">
+                          Large images auto-compressed to under{" "}
+                          {Math.round(maxSize * 1024)}KB
+                        </span>
+                      )}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
+
+            {isDragging && !isCompressing && (
+              <div className="absolute inset-0 bg-blue-100 bg-opacity-50 rounded-lg flex items-center justify-center">
+                <div className="text-blue-600 font-medium">
+                  Drop {isSingleFile ? "file" : "files"} here
+                </div>
+              </div>
+            )}
+          </div>
+
+          {allowCamera && isImageAccepted && (
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple={!isSingleFile}
+                disabled={disabled || isCompressing}
+                onChange={handleChange}
+                className="hidden"
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={disabled || isCompressing}
+                className="w-full"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Open Camera
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => inputRef.current?.click()}
+                disabled={disabled || isCompressing}
+                className="w-full"
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Choose File
+              </Button>
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {errors.length > 0 && (
@@ -451,7 +525,7 @@ const FileInput = ({
                 onClick={() =>
                   setErrors((prev) => prev.filter((_, i) => i !== index))
                 }
-                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                className="h-6 w-6 p-0"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -492,7 +566,7 @@ const FileInput = ({
                 <div
                   key={`${file.name}-${index}`}
                   className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border transition-all duration-200",
+                    "flex items-center gap-3 p-3 rounded-lg border",
                     isUploading
                       ? "bg-blue-50 border-blue-200"
                       : "bg-green-50 border-green-200 hover:bg-green-100"
@@ -539,7 +613,6 @@ const FileInput = ({
                     className="flex-shrink-0 h-8 w-8 p-0 text-gray-400 hover:text-red-500"
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Remove {file.name}</span>
                   </Button>
                 </div>
               );
@@ -549,6 +622,4 @@ const FileInput = ({
       )}
     </div>
   );
-};
-
-export { FileInput };
+}

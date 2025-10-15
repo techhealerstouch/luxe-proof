@@ -2,16 +2,24 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { getOrders, Order } from "@/lib/api-order";
 import {
   getStatusBadgeOrder,
@@ -22,27 +30,29 @@ import {
   Package,
   Download,
   RefreshCw,
-  Plus,
   Loader2,
-  Clock,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  MapPin,
+  Phone,
+  User,
+  Truck,
+  DollarSign,
+  Eye,
+  Mail,
+  Calendar,
+  Hash,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { formatTimeAgo } from "@/utils/formatting";
 
 export default function NFCOrderDashboard() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [sheetOpen, setSheetOpen] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [lastPage, setLastPage] = useState<number>(1);
   const [perPage, setPerPage] = useState<number>(10);
@@ -102,12 +112,15 @@ export default function NFCOrderDashboard() {
     setCurrentPage(1);
   };
 
+  const handleViewDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setSheetOpen(true);
+  };
+
   const handleExport = () => {
-    // Prepare CSV headers
     const headers = [
       "Invoice Number",
       "Shipment Number",
-      "External ID",
       "Customer Name",
       "Customer Email",
       "Package Type",
@@ -116,23 +129,12 @@ export default function NFCOrderDashboard() {
       "Shipping Cost",
       "Order Status",
       "Shipment Status",
-      "Recipient Name",
-      "Street",
-      "City",
-      "Province",
-      "Postal Code",
-      "Country",
-      "Phone Number",
-      "Tracking Number",
       "Created Date",
-      "Created Time",
     ];
 
-    // Prepare CSV rows
     const rows = filteredOrders.map((order) => [
       order.invoice_number || "",
       order.shipment?.shipment_number || "",
-      order.external_id || "",
       order.user?.name || order.added_by?.name || "",
       order.user?.email || "",
       order.credit_name || "",
@@ -141,19 +143,9 @@ export default function NFCOrderDashboard() {
       parseFloat(order.shipping_cost || "0").toFixed(2),
       order.status || "",
       order.shipment?.status || "",
-      order.shipment?.full_name || "",
-      order.shipment?.street || "",
-      order.shipment?.city || "",
-      order.shipment?.province || "",
-      order.shipment?.postal_code || "",
-      order.shipment?.country || "",
-      order.shipment?.phone_number || "",
-      order.shipment?.tracking_number || "",
       new Date(order.created_at).toLocaleDateString(),
-      new Date(order.created_at).toLocaleTimeString(),
     ]);
 
-    // Escape CSV values
     const escapeCSV = (value: string) => {
       if (value.includes(",") || value.includes('"') || value.includes("\n")) {
         return `"${value.replace(/"/g, '""')}"`;
@@ -161,13 +153,11 @@ export default function NFCOrderDashboard() {
       return value;
     };
 
-    // Build CSV content
     const csvContent = [
       headers.map(escapeCSV).join(","),
       ...rows.map((row) => row.map(escapeCSV).join(",")),
     ].join("\n");
 
-    // Create blob and download
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -186,62 +176,62 @@ export default function NFCOrderDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">NFC Orders</h1>
-            <p className="text-muted-foreground">
-              Manage and track your NFC chip orders
+            <h1 className="text-3xl font-bold">NFC Orders</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and track your orders
             </p>
           </div>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
         </div>
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Orders
               </CardTitle>
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{total}</div>
-              <p className="text-xs text-muted-foreground">Active orders</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Units</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Units
+              </CardTitle>
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {totalQuantity.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">NFC chips ordered</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Value
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -250,22 +240,21 @@ export default function NFCOrderDashboard() {
                   minimumFractionDigits: 2,
                 })}
               </div>
-              <p className="text-xs text-muted-foreground">Order value</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Search Bar */}
+        {/* Search and Export */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search orders..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-9"
                 />
               </div>
               <Button
@@ -283,108 +272,91 @@ export default function NFCOrderDashboard() {
         {/* Orders Table */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>Latest NFC chip orders</CardDescription>
-              </div>
-              {filteredOrders.length > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="bg-primary/10 text-primary"
-                >
-                  {filteredOrders.length} orders
-                </Badge>
-              )}
-            </div>
+            <CardTitle>Orders</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-muted-foreground">Loading orders...</p>
+                  <p className="text-sm text-muted-foreground">
+                    Loading orders...
+                  </p>
                 </div>
               </div>
             ) : filteredOrders.length > 0 ? (
               <div className="space-y-4">
-                <div className="overflow-x-auto">
-                  <div className="rounded-md border">
-                    <table className="w-full">
-                      <thead className="border-b bg-muted/50">
-                        <tr>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Invoice Number
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Customer
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Package Type
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            Quantity
-                          </th>
-                          <th className="text-right p-3 text-sm font-medium">
-                            Amount
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Shipping Cost
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Order Status
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Shipment Status
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Shipping Details
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium">
-                            Created
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredOrders.map((order, index) => (
-                          <tr
-                            key={order.id}
-                            className={`border-b hover:bg-muted/50 ${
-                              index % 2 === 0 ? "bg-background" : "bg-muted/20"
-                            }`}
-                          >
-                            <td className="p-3">
-                              <div className="font-medium">
-                                {order.invoice_number}
+                <div className="rounded-md border">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr className="border-b">
+                        <th className="text-left p-3 text-xs font-medium text-muted-foreground">
+                          Invoice
+                        </th>
+                        <th className="text-left p-3 text-xs font-medium text-muted-foreground">
+                          Customer
+                        </th>
+                        <th className="text-left p-3 text-xs font-medium text-muted-foreground">
+                          Package
+                        </th>
+                        <th className="text-right p-3 text-xs font-medium text-muted-foreground">
+                          Qty
+                        </th>
+                        <th className="text-right p-3 text-xs font-medium text-muted-foreground">
+                          Amount
+                        </th>
+                        <th className="text-left p-3 text-xs font-medium text-muted-foreground">
+                          Order Status
+                        </th>
+                        <th className="text-left p-3 text-xs font-medium text-muted-foreground">
+                          Shipment
+                        </th>
+                        <th className="text-left p-3 text-xs font-medium text-muted-foreground">
+                          Created
+                        </th>
+                        <th className="text-center p-3 text-xs font-medium text-muted-foreground">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOrders.map((order) => (
+                        <tr
+                          key={order.id}
+                          className="border-b hover:bg-muted/30 transition-colors"
+                        >
+                          <td className="p-3">
+                            <div className="font-medium text-sm">
+                              {order.invoice_number}
+                            </div>
+                            {order.shipment?.shipment_number && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {order.shipment.shipment_number}
                               </div>
-                              <div className="text-xs text-muted-foreground font-mono">
-                                {order.shipment?.shipment_number}
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <div className="text-sm font-medium">
+                              {order.user?.name ||
+                                order.added_by?.name ||
+                                "N/A"}
+                            </div>
+                            {order.user?.email && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {order.user.email}
                               </div>
-                              {order.external_id && (
-                                <div className="text-xs text-muted-foreground">
-                                  Ext: {order.external_id.substring(0, 20)}...
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <div className="font-medium">
-                                {order.user?.name ||
-                                  order.added_by?.name ||
-                                  "N/A"}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {order.user?.email}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <span className="font-medium text-blue-600">
-                                {order.credit_name}
-                              </span>
-                            </td>
-                            <td className="p-3 text-right font-semibold">
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <span className="text-sm">{order.credit_name}</span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <span className="text-sm font-semibold">
                               {order.quantity?.toLocaleString()}
-                            </td>
-                            <td className="p-3 text-right font-semibold">
+                            </span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <span className="text-sm font-semibold">
                               ₱
                               {parseFloat(order.amount).toLocaleString(
                                 "en-US",
@@ -392,92 +364,56 @@ export default function NFCOrderDashboard() {
                                   minimumFractionDigits: 2,
                                 }
                               )}
-                            </td>
-                            <td className="p-3 text-sm text-muted-foreground">
-                              ₱
-                              {parseFloat(order.shipping_cost).toLocaleString(
-                                "en-US",
-                                {
-                                  minimumFractionDigits: 2,
-                                }
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {getStatusBadgeOrder(order.status)}
+                          </td>
+                          <td className="p-3">
+                            {order.shipment?.status &&
+                              getShipmentStatusBadgeOrder(
+                                order.shipment.status
                               )}
-                            </td>
-                            <td className="p-3">
-                              {getStatusBadgeOrder(order.status)}
-                            </td>
-                            <td className="p-3">
-                              {order.shipment?.status &&
-                                getShipmentStatusBadgeOrder(
-                                  order.shipment.status
-                                )}
-                            </td>
-                            <td className="p-3">
-                              <div className="text-sm max-w-xs">
-                                <div className="font-medium">
-                                  {order.shipment?.full_name}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {order.shipment?.street}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {order.shipment?.city},{" "}
-                                  {order.shipment?.province}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {order.shipment?.postal_code} -{" "}
-                                  {order.shipment?.country}
-                                </div>
-                                <div className="text-xs text-muted-foreground font-medium mt-1">
-                                  {order.shipment?.phone_number}
-                                </div>
-                                {order.shipment?.tracking_number && (
-                                  <div className="text-xs text-blue-600 font-mono mt-1">
-                                    Track: {order.shipment.tracking_number}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex items-center gap-1 text-sm">
-                                <Clock className="h-3 w-3 text-muted-foreground" />
-                                <span>{formatTimeAgo(order.created_at)}</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {new Date(
-                                  order.created_at
-                                ).toLocaleDateString()}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(
-                                  order.created_at
-                                ).toLocaleTimeString()}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="text-sm">
+                              {formatTimeAgo(order.created_at)}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDetails(order)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
-                {/* Pagination Controls */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>
-                      Showing {from} to {to} of {total} orders
-                    </span>
+                {/* Pagination */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {from} to {to} of {total} orders
                   </div>
 
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Rows per page:
+                        Rows:
                       </span>
                       <Select
                         value={perPage.toString()}
                         onValueChange={handlePerPageChange}
                       >
-                        <SelectTrigger className="w-[70px]">
+                        <SelectTrigger className="w-[70px] h-8">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -485,7 +421,6 @@ export default function NFCOrderDashboard() {
                           <SelectItem value="10">10</SelectItem>
                           <SelectItem value="20">20</SelectItem>
                           <SelectItem value="50">50</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -494,6 +429,7 @@ export default function NFCOrderDashboard() {
                       <Button
                         variant="outline"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handlePageChange(1)}
                         disabled={currentPage === 1 || loading}
                       >
@@ -502,22 +438,23 @@ export default function NFCOrderDashboard() {
                       <Button
                         variant="outline"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1 || loading}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <div className="flex items-center gap-1 px-2">
-                        <span className="text-sm font-medium">
-                          {currentPage}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          of {lastPage}
+                      <div className="px-3 text-sm">
+                        <span className="font-medium">{currentPage}</span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          / {lastPage}
                         </span>
                       </div>
                       <Button
                         variant="outline"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === lastPage || loading}
                       >
@@ -526,6 +463,7 @@ export default function NFCOrderDashboard() {
                       <Button
                         variant="outline"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handlePageChange(lastPage)}
                         disabled={currentPage === lastPage || loading}
                       >
@@ -537,13 +475,253 @@ export default function NFCOrderDashboard() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <Package className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No orders found</p>
+                <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground">No orders found</p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Order Details Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {selectedOrder && (
+            <>
+              <SheetHeader>
+                <SheetTitle>Order Details</SheetTitle>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6">
+                {/* Order Info */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">
+                        Invoice Number
+                      </p>
+                      <p className="font-semibold">
+                        {selectedOrder.invoice_number}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedOrder.shipment?.shipment_number && (
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground">
+                          Shipment Number
+                        </p>
+                        <p className="font-mono text-sm">
+                          {selectedOrder.shipment.shipment_number}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">
+                        Order Date
+                      </p>
+                      <p className="text-sm">
+                        {new Date(selectedOrder.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Customer Info */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-sm">
+                    Customer Information
+                  </h3>
+
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">Name</p>
+                      <p className="font-medium">
+                        {selectedOrder.user?.name ||
+                          selectedOrder.added_by?.name ||
+                          "N/A"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedOrder.user?.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="text-sm">{selectedOrder.user.email}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Order Details */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-sm">Order Details</h3>
+
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Package
+                      </span>
+                      <span className="font-medium text-sm">
+                        {selectedOrder.credit_name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Quantity
+                      </span>
+                      <span className="font-semibold">
+                        {selectedOrder.quantity}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Amount
+                      </span>
+                      <span className="font-semibold">
+                        ₱
+                        {parseFloat(selectedOrder.amount).toLocaleString(
+                          "en-US",
+                          {
+                            minimumFractionDigits: 2,
+                          }
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Shipping
+                      </span>
+                      <span className="font-medium">
+                        ₱
+                        {parseFloat(selectedOrder.shipping_cost).toLocaleString(
+                          "en-US",
+                          {
+                            minimumFractionDigits: 2,
+                          }
+                        )}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="font-medium">Total</span>
+                      <span className="font-bold text-lg">
+                        ₱
+                        {(
+                          parseFloat(selectedOrder.amount) +
+                          parseFloat(selectedOrder.shipping_cost)
+                        ).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Order Status
+                      </p>
+                      {getStatusBadgeOrder(selectedOrder.status)}
+                    </div>
+                    {selectedOrder.shipment?.status && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Shipment Status
+                        </p>
+                        {getShipmentStatusBadgeOrder(
+                          selectedOrder.shipment.status
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Shipping Details */}
+                {selectedOrder.shipment && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-sm">
+                        Shipping Information
+                      </h3>
+
+                      <div className="flex items-start gap-2">
+                        <User className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">
+                            Recipient
+                          </p>
+                          <p className="font-medium">
+                            {selectedOrder.shipment.full_name}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">Phone</p>
+                          <p className="font-medium">
+                            {selectedOrder.shipment.phone_number}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">
+                            Address
+                          </p>
+                          <p className="text-sm leading-relaxed">
+                            {selectedOrder.shipment.street}
+                            <br />
+                            {selectedOrder.shipment.city},{" "}
+                            {selectedOrder.shipment.province}
+                            <br />
+                            {selectedOrder.shipment.postal_code}
+                            <br />
+                            {selectedOrder.shipment.country}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedOrder.shipment.tracking_number && (
+                        <div className="flex items-start gap-2">
+                          <Truck className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">
+                              Tracking Number
+                            </p>
+                            <p className="font-mono font-semibold text-blue-600">
+                              {selectedOrder.shipment.tracking_number}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 }

@@ -22,11 +22,7 @@ import {
   UserRound,
   CircleDollarSign,
   HelpCircle,
-  BookOpen,
-  MessageCircle,
   Mail,
-  FileText,
-  ExternalLink,
   ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
@@ -60,7 +56,6 @@ export default function TopNavigation({
         className
       )}
     >
-      {/* Left Section */}
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -75,18 +70,13 @@ export default function TopNavigation({
           )}
         </Button>
       </div>
-
-      {/* Right Section */}
       <div className="flex items-center gap-3">
-        {/* Credits Component with dynamic state */}
         <CreditsWithTopUp size="sm" showRefresh topUpButtonText="Add Credits" />
-
-        {/* Help Center */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center gap-2 px-3 py-2 h-auto"
+              className="hidden lg:flex items-center gap-2 px-3 py-2 h-auto"
               aria-label="Help Center"
             >
               <HelpCircle className="h-4 w-4" />
@@ -95,7 +85,6 @@ export default function TopNavigation({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Help & Support</DropdownMenuLabel>
-
             <DropdownMenuItem asChild>
               <Link href="/contact">
                 <Mail className="mr-2 h-4 w-4" />
@@ -104,8 +93,6 @@ export default function TopNavigation({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -153,6 +140,19 @@ export default function TopNavigation({
                 Orders
               </Link>
             </DropdownMenuItem>
+
+            {/* Help section - only visible on mobile/tablet */}
+            <DropdownMenuSeparator className="lg:hidden" />
+            <DropdownMenuLabel className="lg:hidden">
+              Help & Support
+            </DropdownMenuLabel>
+            <DropdownMenuItem asChild className="lg:hidden">
+              <Link href="/contact">
+                <Mail className="mr-2 h-4 w-4" />
+                Contact Support
+              </Link>
+            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-red-600">
               <LogOut className="mr-2 h-4 w-4" />

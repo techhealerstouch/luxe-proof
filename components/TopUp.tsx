@@ -422,9 +422,9 @@ const TopUp: React.FC<TopUpProps> = ({
         className="flex items-center gap-2 rounded-lg bg-black text-white font-semibold shadow-sm transition-all"
       >
         <Plus className="h-4 w-4" />
-        {buttonText}
+        <Coins className="h-4 w-4" />
+        <span className="hidden lg:inline">{buttonText}</span>
       </Button>
-
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
