@@ -59,7 +59,7 @@ const CreditsDisplay: React.FC<CreditsDisplayProps> = ({
           <span className="text-sm font-bold tabular-nums text-foreground">
             {credits.toLocaleString()}
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80 lg:inline">
             Credits
           </span>
         </div>

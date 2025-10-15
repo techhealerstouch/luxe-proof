@@ -24,16 +24,13 @@ const CreditsWithTopUp: React.FC<CreditsWithTopUpProps> = ({
   showTopUp = true,
   showRefresh = false,
   size = "md",
-  variant,
   topUpButtonText = "Top Up",
   topUpButtonVariant = "outline",
   className = "",
-  packages,
 }) => {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <CreditsDisplay showRefresh={showRefresh} />
-
       {showTopUp && (
         <TopUp
           buttonText={topUpButtonText}
