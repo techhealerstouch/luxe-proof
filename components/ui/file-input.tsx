@@ -221,7 +221,7 @@ export function FileInput({
         newErrors.push(
           `${file.name} is too large (${formatFileSize(
             file.size
-          )}). Maximum original file size is 50MB`
+          )}). The Maximum original file size is 50MB`
         );
         continue;
       }
@@ -430,7 +430,7 @@ export function FileInput({
               <div className="space-y-1">
                 {isCompressing ? (
                   <p className="text-sm font-medium text-blue-600">
-                    Compressing images...
+                    Compressing image...
                   </p>
                 ) : (
                   <>
