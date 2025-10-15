@@ -1,18 +1,18 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/(main)/authentications/create/page": "app/(main)/authentications/create/page.js",
-  "/(main)/authentications/intro/page": "app/(main)/authentications/intro/page.js",
   "/(main)/auth/callback/page": "app/(main)/auth/callback/page.js",
-  "/(main)/billing/page": "app/(main)/billing/page.js",
+  "/(main)/authentications/create/page": "app/(main)/authentications/create/page.js",
   "/(main)/authentications/page": "app/(main)/authentications/page.js",
+  "/(main)/authentications/intro/page": "app/(main)/authentications/intro/page.js",
+  "/(main)/billing/page": "app/(main)/billing/page.js",
   "/(main)/credits/failure/page": "app/(main)/credits/failure/page.js",
-  "/(main)/credits/success/page": "app/(main)/credits/success/page.js",
   "/(main)/dashboard/page": "app/(main)/dashboard/page.js",
+  "/(main)/credits/success/page": "app/(main)/credits/success/page.js",
   "/(main)/login/page": "app/(main)/login/page.js",
   "/(main)/nfc/page": "app/(main)/nfc/page.js",
+  "/(main)/profile/page": "app/(main)/profile/page.js",
   "/(main)/order-tracking/page": "app/(main)/order-tracking/page.js",
   "/(main)/page": "app/(main)/page.js",
-  "/(main)/profile/page": "app/(main)/profile/page.js",
   "/(main)/settings/page": "app/(main)/settings/page.js",
   "/(public)/[ref_code]/page": "app/(public)/[ref_code]/page.js"
 }
