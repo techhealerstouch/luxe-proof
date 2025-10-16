@@ -46,7 +46,6 @@ import {
   Clock,
   SmartphoneNfc,
   Search,
-  Link,
   QrCode,
   X,
   Nfc,
@@ -62,6 +61,7 @@ import {
   type ExistingNfcCheck,
   type ApiResponse,
 } from "@/lib/api-nfc-service";
+import Link from "next/link";
 
 // Update the NfcManagementModal component
 const NfcManagementModal: React.FC<{
@@ -332,9 +332,12 @@ const NfcManagementModal: React.FC<{
                       <Label className="text-xs text-muted-foreground">
                         Reference Code
                       </Label>
-                      <p className="font-mono font-bold text-lg mt-1">
+                      <Link
+                        href={`/${existingNfc.nfc_data?.ref_code}`}
+                        className="font-mono font-bold text-lg mt-1 block text-blue-600 hover:text-blue-800 hover:underline"
+                      >
                         {existingNfc.nfc_data?.ref_code}
-                      </p>
+                      </Link>
                     </div>
                     <div className="border rounded-lg p-4">
                       <Label className="text-xs text-muted-foreground">
@@ -499,7 +502,6 @@ const NfcManagementModal: React.FC<{
                   <TabsContent value="link" className="space-y-4">
                     <div>
                       <h3 className="font-medium mb-2 flex items-center gap-2">
-                        <Link className="h-4 w-4" />
                         Link NFC to Product
                       </h3>
                       <p className="text-sm text-muted-foreground mb-4">

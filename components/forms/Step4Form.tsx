@@ -44,7 +44,6 @@ export function Step4Form({
     form.setValue(fieldName, null);
   };
 
-  console.log("Step 4", watchData);
   const [filesToRemove, setFilesToRemove] = useState<string[]>([]);
 
   const getExistingFilePath = (fieldName: string): string | null => {

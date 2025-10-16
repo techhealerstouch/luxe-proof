@@ -47,7 +47,6 @@ const DocumentDownloadButton: React.FC<DocumentDownloadButtonProps> = ({
         ? filePath.substring(1)
         : filePath;
       const fullUrl = `${baseUrl}/api/download/${cleanPath}`;
-      console.log("Download URL:", fullUrl);
       const response = await axios.get(fullUrl, {
         headers: {
           Authorization: `Bearer ${token}`,

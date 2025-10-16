@@ -58,7 +58,6 @@ export interface BillingHistoryItem {
 }
 
 export interface BillingData {
-  currentPlan: CurrentPlan;
   billingHistory: BillingHistoryItem[];
   creditsInvoices: CreditInvoice[];
   subscriptions: Subscription[];

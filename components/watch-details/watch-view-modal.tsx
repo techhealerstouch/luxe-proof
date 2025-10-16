@@ -1,5 +1,5 @@
 // components/watch-details/watch-view-modal.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,9 +8,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download } from "lucide-react";
+import { Download, Eye, Loader2 } from "lucide-react";
 import { WatchAuthentication } from "@/types/watch-authentication";
-import { generateAuthenticationPDF } from "@/utils/pdf-generator";
+import { certificateApi } from "@/lib/api-certificate";
+import { toast } from "sonner";
 import {
   BasicInfoSection,
   SerialInfoSection,
@@ -33,15 +34,47 @@ export const WatchViewModal: React.FC<WatchViewModalProps> = ({
   onClose,
   watchData,
 }) => {
-  const handleDownloadPDF = () => {
-    if (watchData) {
-      generateAuthenticationPDF(watchData);
+  const [loading, setLoading] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!watchData) return;
+
+    setLoading(true);
+    try {
+      await certificateApi.downloadCertificate(watchData.id);
+      toast.success("Certificate downloaded successfully");
+    } catch (error) {
+      console.error("Failed to download certificate:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to download certificate. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePreviewPDF = async () => {
+    if (!watchData) return;
+
+    setLoading(true);
+    try {
+      await certificateApi.previewCertificate(watchData.id);
+    } catch (error) {
+      console.error("Failed to preview certificate:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to preview certificate. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   if (!watchData) return null;
 
-  // Check if the watch status is voided
   const isVoided = watchData.status === "voided";
 
   return (
@@ -50,17 +83,35 @@ export const WatchViewModal: React.FC<WatchViewModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Watch Authentication Details</span>
-            {/* Only show Download Certificate button if not voided */}
             {!isVoided && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadPDF}
-                className="ml-2"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Certificate
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviewPDF}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Eye className="h-4 w-4 mr-2" />
+                  )}
+                  Preview
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Download
+                </Button>
+              </div>
             )}
           </DialogTitle>
         </DialogHeader>

@@ -945,6 +945,7 @@ const createMainContent = (watchData: WatchAuthentication): string => `
     <div class="image-placeholder">
     <div style={{ textAlign: 'center' }}>
       <p style="text-align:center;">Front View</p>
+      ${`http://localhost:8000/storage/${watchData?.provenance_documentation_audit?.watch_image_front_path}`}
       <img 
         style="width: 240px; height: 240px; object-fit: cover;"
         src=${`http://localhost:8000/storage/${watchData?.provenance_documentation_audit?.watch_image_front_path}`}

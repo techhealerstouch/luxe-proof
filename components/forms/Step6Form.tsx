@@ -60,7 +60,6 @@ export function Step6Form({
     form.setValue(fieldName, null);
   };
 
-  console.log("Step 4", watchData);
   const [filesToRemove, setFilesToRemove] = useState<string[]>([]);
 
   const getExistingFilePath = (fieldName: string): string | null => {
@@ -264,7 +263,6 @@ export function Step6Form({
           <FormField
             name="has_purple_reversing_wheels"
             render={({ field }) => {
-              console.log("Field value:", field.value);
               return (
                 <FormItem>
                   <FormLabel className="text-sm font-semibold">

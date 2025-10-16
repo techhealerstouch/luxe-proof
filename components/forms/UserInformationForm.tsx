@@ -38,8 +38,6 @@ export function UserInformationForm({
   const { handleSubmit, control } = form;
   const allValues = useWatch({ control });
 
-  console.log("Current form values:", allValues);
-
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-y-4">

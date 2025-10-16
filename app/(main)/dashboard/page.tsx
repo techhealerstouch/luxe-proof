@@ -524,62 +524,39 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {recentAuthentications.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Brand</TableHead>
-                        <TableHead>Model</TableHead>
-                        <TableHead className="w-[100px]">Year</TableHead>
-                        <TableHead>Authenticity</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[120px]">Created</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentAuthentications.map((auth) => {
-                        const isVoided = auth.status === "voided";
+                <>
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-4">
+                    {recentAuthentications.map((auth) => {
+                      const isVoided = auth.status === "voided";
 
-                        return (
-                          <TableRow key={auth.id} className="hover:bg-muted/50">
-                            <TableCell>
+                      return (
+                        <div
+                          key={auth.id}
+                          className={`border rounded-lg p-4 space-y-3 ${
+                            isVoided ? "bg-gray-50" : "bg-white"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
                               <div
-                                className={`font-medium ${
+                                className={`font-medium text-base ${
                                   isVoided ? "text-gray-400 line-through" : ""
                                 }`}
                               >
                                 {auth.name || auth.client_name || "Unknown"}
                               </div>
-                            </TableCell>
-                            <TableCell>
                               <div
-                                className={`text-sm ${
-                                  isVoided ? "text-gray-400 line-through" : ""
+                                className={`text-sm mt-1 ${
+                                  isVoided
+                                    ? "text-gray-400 line-through"
+                                    : "text-muted-foreground"
                                 }`}
                               >
-                                {auth.brand}
+                                {auth.brand} {auth.model && `• ${auth.model}`}
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <div
-                                className={`text-sm ${
-                                  isVoided ? "text-gray-400 line-through" : ""
-                                }`}
-                              >
-                                {auth.model || "N/A"}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div
-                                className={`text-sm ${
-                                  isVoided ? "text-gray-400 line-through" : ""
-                                }`}
-                              >
-                                {auth.estimated_production_year || "N/A"}
-                              </div>
-                            </TableCell>
-                            <TableCell>
+                            </div>
+                            <div>
                               {isVoided ? (
                                 <Badge className="bg-gray-100 text-gray-500 border-gray-200">
                                   Voided
@@ -587,41 +564,164 @@ export default function DashboardPage() {
                               ) : (
                                 getAuthenticityBadge(auth.authenticity_verdict)
                               )}
-                            </TableCell>
-                            <TableCell>
-                              {getStatusBadgeTableAuthentication(auth)}
-                            </TableCell>
-                            <TableCell>
-                              <div
-                                className={`text-sm ${
-                                  isVoided ? "text-gray-400" : ""
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">
+                                Year:
+                              </span>
+                              <span
+                                className={`ml-2 ${
+                                  isVoided ? "text-gray-400 line-through" : ""
                                 }`}
                               >
-                                {auth.created_at ? (
-                                  <>
-                                    <div className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3 text-muted-foreground" />
-                                      <span>
-                                        {formatTimeAgo(auth.created_at)}
-                                      </span>
-                                    </div>
-                                    <div className="text-xs text-muted-foreground mt-1">
-                                      {new Date(
-                                        auth.created_at
-                                      ).toLocaleDateString()}
-                                    </div>
-                                  </>
-                                ) : (
-                                  "N/A"
-                                )}
+                                {auth.estimated_production_year || "N/A"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">
+                                Status:
+                              </span>
+                              <span className="ml-2">
+                                {getStatusBadgeTableAuthentication(auth)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`text-sm pt-3 border-t ${
+                              isVoided
+                                ? "text-gray-400"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {auth.created_at ? (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{formatTimeAgo(auth.created_at)}</span>
+                                <span className="mx-1">•</span>
+                                <span>
+                                  {new Date(
+                                    auth.created_at
+                                  ).toLocaleDateString()}
+                                </span>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                            ) : (
+                              "N/A"
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Tablet & Desktop Table View */}
+                  <div className="hidden md:block rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Brand</TableHead>
+                          <TableHead>Model</TableHead>
+                          <TableHead className="w-[100px]">Year</TableHead>
+                          <TableHead>Authenticity</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="w-[120px]">Created</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recentAuthentications.map((auth) => {
+                          const isVoided = auth.status === "voided";
+
+                          return (
+                            <TableRow
+                              key={auth.id}
+                              className="hover:bg-muted/50"
+                            >
+                              <TableCell>
+                                <div
+                                  className={`font-medium ${
+                                    isVoided ? "text-gray-400 line-through" : ""
+                                  }`}
+                                >
+                                  {auth.name || auth.client_name || "Unknown"}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div
+                                  className={`text-sm ${
+                                    isVoided ? "text-gray-400 line-through" : ""
+                                  }`}
+                                >
+                                  {auth.brand}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div
+                                  className={`text-sm ${
+                                    isVoided ? "text-gray-400 line-through" : ""
+                                  }`}
+                                >
+                                  {auth.model || "N/A"}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div
+                                  className={`text-sm ${
+                                    isVoided ? "text-gray-400 line-through" : ""
+                                  }`}
+                                >
+                                  {auth.estimated_production_year || "N/A"}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {isVoided ? (
+                                  <Badge className="bg-gray-100 text-gray-500 border-gray-200">
+                                    Voided
+                                  </Badge>
+                                ) : (
+                                  getAuthenticityBadge(
+                                    auth.authenticity_verdict
+                                  )
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {getStatusBadgeTableAuthentication(auth)}
+                              </TableCell>
+                              <TableCell>
+                                <div
+                                  className={`text-sm ${
+                                    isVoided ? "text-gray-400" : ""
+                                  }`}
+                                >
+                                  {auth.created_at ? (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3 text-muted-foreground" />
+                                        <span>
+                                          {formatTimeAgo(auth.created_at)}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {new Date(
+                                          auth.created_at
+                                        ).toLocaleDateString()}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    "N/A"
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8">
                   <Shield className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />

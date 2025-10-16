@@ -21,10 +21,8 @@ import {
   fetchCreditsInvoices,
   fetchSubscriptions,
 } from "@/lib/billing-service";
-import { CurrentPlanSection } from "./page";
 import { CreditsHistorySection } from "./page";
 export { BillingPageHeader } from "./components/billing-page-header";
-export { CurrentPlanSection } from "./components/current-plan-section";
 export { FilterSection } from "./components/filter-section";
 export { InvoiceList } from "./components/invoice-list-section";
 export { PaginationControls } from "./components/pagination-controls";
@@ -35,13 +33,6 @@ interface BillingPageHeaderProps {
   hasData: boolean;
 }
 const mockBillingData: BillingData = {
-  currentPlan: {
-    name: "Free Plan",
-    type: "free",
-    price: 0,
-    billingCycle: "monthly",
-    features: ["Basic features", "Limited usage", "Community support"],
-  },
   billingHistory: [],
   creditsInvoices: [],
   subscriptions: [],
