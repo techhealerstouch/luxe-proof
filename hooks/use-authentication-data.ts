@@ -95,7 +95,6 @@ export const useAuthenticationData = (): UseAuthenticationDataReturn => {
       const json = await response.json();
       const authenticatedWatches = json.data;
 
-      console.log("Authentication data received:", authenticatedWatches);
       const mapped: WatchAuthentication[] = authenticatedWatches.map(
         mapApiDataToWatchAuthentication
       );

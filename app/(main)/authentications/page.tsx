@@ -349,7 +349,6 @@ export default function AuthenticationsPage() {
   };
 
   const handleDownloadPDF = async (watchData: WatchAuthentication) => {
-    console.log(watchData);
     try {
       await generateAuthenticationPDF(watchData);
     } catch (error) {

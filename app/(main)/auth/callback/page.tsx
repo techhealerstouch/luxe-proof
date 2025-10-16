@@ -54,7 +54,6 @@ export default function OAuthCallback() {
     const handleAuth = async () => {
       // Double-check we're not already processing
       if (isProcessing.current) {
-        console.log("Already processing authentication");
         return;
       }
       isProcessing.current = true;
@@ -65,7 +64,6 @@ export default function OAuthCallback() {
         const alreadyProcessed = sessionStorage.getItem("oauth_processed");
 
         if (existingToken && alreadyProcessed === code) {
-          console.log("Code already processed, redirecting to dashboard");
           router.push("/dashboard");
           return;
         }
@@ -74,16 +72,12 @@ export default function OAuthCallback() {
         sessionStorage.setItem("oauth_processed", code);
         sessionStorage.setItem("justLoggedIn", "true");
 
-        console.log("Exchanging authorization code...");
-
         // Exchange code for tokens
         const data = await exchangeAuthorizationCode(code);
 
         if (!data || !data.access_token) {
           throw new Error("No access token received from server");
         }
-
-        console.log("Token exchange successful");
 
         // Store access token
         localStorage.setItem("accessToken", data.access_token);
@@ -141,7 +135,7 @@ export default function OAuthCallback() {
           return;
         }
 
-window.location.href = "/dashboard";
+        window.location.href = "/dashboard";
       } catch (error: any) {
         console.error("OAuth callback error:", error);
 

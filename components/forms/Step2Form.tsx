@@ -45,7 +45,6 @@ export function Step2Form({
     form.setValue(fieldName, null);
   };
 
-  // console.log("SERIAL", watchData);
   const getExistingFilePath = (fieldName: string): string | null => {
     if (fieldName === "watch_serial_info_image_path")
       return watchData?.serial_and_model_number_cross_reference

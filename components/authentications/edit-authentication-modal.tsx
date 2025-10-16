@@ -19,7 +19,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { step1Schema } from "@/schemas/stepsSchemas";
-import { CheckCircle, Send } from "lucide-react";
+import {
+  CheckCircle,
+  Send,
+  User,
+  FileText,
+  Hash,
+  Box,
+  Clock,
+  Link2,
+  Cog,
+  Activity,
+  Award,
+  Watch,
+} from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 
@@ -72,46 +85,59 @@ interface EditAuthenticationModalProps {
 
 // Tab configuration
 const TAB_CONFIG = [
-  { key: "userInformation", label: "User Info", fullLabel: "User Information" },
+  {
+    key: "userInformation",
+    label: "User Info",
+    fullLabel: "User Information",
+    icon: User,
+  },
   {
     key: "step1",
     label: "Provenance",
     fullLabel: "Step 1: Provenance & Documentation Audit",
+    icon: FileText,
   },
   {
     key: "step2",
     label: "Serial & Model",
     fullLabel: "Step 2: Serial & Model Number Cross-Reference",
+    icon: Hash,
   },
   {
     key: "step3",
     label: "Case & Crystal",
     fullLabel: "Step 3: Case, Bezel, and Crystal Analysis",
+    icon: Box,
   },
   {
     key: "step4",
     label: "Dial & Hands",
     fullLabel: "Step 4: Dial, Hands, and Date Scrutiny",
+    icon: Clock,
   },
   {
     key: "step5",
     label: "Bracelet & Clasp",
     fullLabel: "Step 5: Bracelet/Strap and Clasp Inspection",
+    icon: Link2,
   },
   {
     key: "step6",
     label: "Movement",
     fullLabel: "Step 6: Movement Examination",
+    icon: Cog,
   },
   {
     key: "step7",
     label: "Performance",
     fullLabel: "Step 7: Performance & Function Test",
+    icon: Activity,
   },
   {
     key: "step8",
     label: "Final Grading",
     fullLabel: "Step 8: Final Condition & Grading",
+    icon: Award,
   },
 ];
 
@@ -545,7 +571,6 @@ export function EditAuthenticationModal({
   // Generic step handlers
   const createStepHandler =
     (stepKey: string, nextTab: string) => (data: any) => {
-      console.log(`${stepKey} data:`, data);
       setCompletedSteps((prev) => new Set([...prev, stepKey]));
       setTabValue(nextTab);
     };
@@ -646,77 +671,82 @@ export function EditAuthenticationModal({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-xl font-bold">
-            Edit Authentication
-          </DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <div className="bg-muted/30 px-6 pt-6 pb-4 border-b">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Watch className="w-5 h-5" />
+              Edit Authentication
+            </DialogTitle>
+          </DialogHeader>
 
-          <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg border mt-2">
-            <div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+            <div className="space-y-1">
               <Label className="text-xs font-medium text-muted-foreground">
                 Watch Name
               </Label>
-              <p className="text-sm font-semibold">
+              <p className="text-sm font-semibold truncate">
                 {watchData?.name || "N/A"}
               </p>
             </div>
-            <div className="h-6 border-l border-border" />
-            <div>
+            <div className="space-y-1">
               <Label className="text-xs font-medium text-muted-foreground">
                 Brand/Model
               </Label>
-              <p className="text-sm">
+              <p className="text-sm truncate">
                 {watchData?.brand} {watchData?.model}
               </p>
             </div>
-            <div className="h-6 border-l border-border" />
-            <div>
+            <div className="space-y-1">
               <Label className="text-xs font-medium text-muted-foreground">
                 Serial Number
               </Label>
-              <p className="text-sm font-mono font-semibold">
+              <p className="text-sm font-mono font-semibold truncate">
                 {watchData?.serial_and_model_number_cross_reference
                   ?.serial_number || "N/A"}
               </p>
             </div>
-            <div className="h-6 border-l border-border" />
-            <div>
+            <div className="space-y-1">
               <Label className="text-xs font-medium text-muted-foreground">
                 Last Updated
               </Label>
               <p className="text-xs">{new Date().toLocaleDateString()}</p>
             </div>
           </div>
-        </DialogHeader>
+        </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto px-6">
           <Tabs value={tabValue} onValueChange={setTabValue} className="w-full">
-            <TabsList className="grid w-full grid-cols-9 mb-4 flex-shrink-0">
-              {TAB_CONFIG.map((tab) => (
-                <TabsTrigger
-                  key={tab.key}
-                  value={tab.key}
-                  className="text-xs px-1 relative"
-                >
-                  <div className="flex items-center gap-1">
-                    {completedSteps.has(tab.key) && (
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                    )}
-                    <span
-                      className={
-                        completedSteps.has(tab.key) ? "text-green-600" : ""
-                      }
+            <div className="sticky top-0 bg-background pt-4 pb-2 z-10">
+              <TabsList className="w-full h-auto grid grid-cols-3 md:grid-cols-6 lg:grid-cols-9 gap-1 bg-muted/50 p-1">
+                {TAB_CONFIG.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <TabsTrigger
+                      key={tab.key}
+                      value={tab.key}
+                      className="data-[state=active]:bg-background h-auto py-2 px-2"
                     >
-                      {tab.label}
-                    </span>
-                  </div>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+                      <div className="flex flex-col items-center gap-1 w-full">
+                        <div className="flex items-center gap-1">
+                          {completedSteps.has(tab.key) ? (
+                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          ) : (
+                            <Icon className="w-4 h-4 flex-shrink-0" />
+                          )}
+                        </div>
+                        <span className="text-[10px] leading-tight text-center hidden lg:block">
+                          {tab.label}
+                        </span>
+                      </div>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
 
             {TAB_CONFIG.map((tab) => (
-              <TabsContent key={tab.key} value={tab.key} className="mt-0">
+              <TabsContent key={tab.key} value={tab.key} className="mt-4">
                 <Card className="border-none shadow-none">
                   <CardHeader className="px-0 pb-4">
                     <CardTitle className="text-lg">{tab.fullLabel}</CardTitle>
@@ -737,13 +767,15 @@ export function EditAuthenticationModal({
           </Tabs>
         </div>
 
-        <div className="flex-shrink-0 border-t pt-4">
+        <div className="border-t bg-muted/30 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Progress: {completedSteps.size}/9 steps completed
+              <span className="font-medium">{completedSteps.size}</span>
+              <span className="mx-1">/</span>
+              <span>9 steps completed</span>
             </div>
             <Button onClick={handleSubmitAll} size="sm" disabled={isSubmitting}>
-              <Send className="w-4 h-4 mr-1" />
+              <Send className="w-4 h-4 mr-2" />
               {isSubmitting ? "Updating..." : "Update Authentication"}
             </Button>
           </div>

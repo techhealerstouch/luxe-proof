@@ -60,7 +60,6 @@ const generateSubscriptionsCSV = (subscriptions: any[]): string => {
 
   const headers = [
     "id",
-    "plan_name",
     "service",
     "amount",
     "currency",

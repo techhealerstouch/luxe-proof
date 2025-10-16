@@ -366,9 +366,5 @@ export default function Page() {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    console.log("All Datas", data);
-  };
-
   return <UserInformationForm form={form} onSubmit={onSubmit} />;
 }

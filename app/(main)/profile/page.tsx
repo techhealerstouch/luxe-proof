@@ -219,14 +219,10 @@ export default function ProfilePage() {
 
     // Mark as initialized after setting form data
     setIsInitialized(true);
-
-    console.log("User timezone:", user?.timezone);
   }, [user, router]);
 
   // Debug useEffect to see when formData changes
-  useEffect(() => {
-    console.log("formData.timezone updated to:", formData.timezone);
-  }, [formData.timezone]);
+  useEffect(() => {}, [formData.timezone]);
 
   // Memoized values
   const passwordRequirements = useMemo(
@@ -249,7 +245,6 @@ export default function ProfilePage() {
   // Form handlers
   const updateFormField = useCallback(
     (field: keyof FormData, value: string) => {
-      console.log(`Updating ${field} to:`, value); // Debug log
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
     []
@@ -441,10 +436,6 @@ export default function ProfilePage() {
                         <Select
                           value={formData.timezone}
                           onValueChange={(value) => {
-                            console.log(
-                              "Select onValueChange called with:",
-                              value
-                            );
                             if (value && value !== formData.timezone) {
                               updateFormField("timezone", value);
                             }

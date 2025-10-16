@@ -270,7 +270,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No auth token found");
       }
 
-      console.log(userData);
       const payload = {
         name: userData.name,
         email: userData.email,
@@ -357,7 +356,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       newPassword: string,
       confirmPassword: string
     ): Promise<void> => {
-      console.log(currentPassword);
       const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
 
       try {
